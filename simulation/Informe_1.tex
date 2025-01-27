@@ -1,0 +1,410 @@
+\documentclass[a4paper,12pt]{article} 
+\usepackage{mathrsfs}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb} 
+\usepackage{graphicx} 
+\usepackage{hyperref} 
+\usepackage{wrapfig}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{float}
+\usepackage{eurosym}
+\usepackage{color}
+\usepackage{circuitikz}
+\usepackage{titling}
+\usepackage{hyperref}
+\usepackage{media9}
+\usepackage{lipsum}
+\usepackage{tocbibind}
+\usepackage{listings}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+\usepackage{bookmark}
+\usepackage{media9}
+\usepackage[table]{xcolor}
+\definecolor{lightblue}{RGB}{228, 244, 253}
+\usepackage{color}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+  language=Python,
+  inputencoding=utf8,
+  extendedchars=true,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3,
+  literate=%
+    {á}{{\'a}}1
+    {é}{{\'e}}1
+    {í}{{\'i}}1
+    {ó}{{\'o}}1
+    {ú}{{\'u}}1
+    {ñ}{{\~n}}1
+    {č}{{\v{c}}}1
+}
+\usepackage[left=3cm,right=3cm,top=3cm,bottom=4cm]{geometry}
+\sloppy
+
+\pagestyle{fancy}
+\providecommand{\abs}[1]{\lvert#1\rvert}
+\providecommand{\norm}[1]{\lVert#1\rVert}
+
+%%% Para las cabeceras
+\newcommand{\hsp}{\hspace{20pt}}
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\headheight=50pt
+%%% 
+\newcommand{\vacio}{\textcolor{white}{ .}}
+
+%%% Para que las ecuaciones se numeren
+%%% con el número de sección y el de ecuación.
+\renewcommand{\theequation}{\thesection.\arabic{equation}}
+
+
+% Color azul para algunos 
+% textos de la portada
+\definecolor{azulportada}{rgb}{0.16, 0.32, 0.75}
+
+%%%% Azul para textos de headings
+\definecolor{azulinterior}{rgb}{0.0, 0.2, 0.6}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%% Datos del proyecto %%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%TÍTULO
+%%% Escribirlo en minúsculas, el programa
+%%% lo pondrá en mayúsculas en la portada.
+
+\title{Primeros pasos con ROS 2}
+
+%%%% AUTORES
+\author{Lydia Ruiz Martínez \and Pablo Tuñón Laguna \and Jorge Vančo Sampedro}
+
+%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{titlepage} %%%%% Aquí no hay que tocar nada.
+	%%%% Las siguientes instrucciones generarán automáticamente
+	%%%% la portada de tu proyecto.
+	%%% Cambio de la estructura de esta página
+\newgeometry{left=0.6cm,top=1.3cm,bottom=1.2cm}
+
+\fbox{\parbox[c]{18.5cm}{
+\begin{center}
+\vspace{1.5cm}
+{\fontfamily{ptm}\fontsize{24}{28.8}\selectfont{Universidad Pontificia Comillas}}\\
+[2.5em]
+{\fontfamily{ptm}\fontsize{24}{5}\selectfont{ETSI-ICAI}}\\
+[3.5em]
+{\fontfamily{ptm}\fontsize{28}{5}\selectfont{Laboratorio Robots autónomos}}\\
+[3cm]
+% {\fontfamily{ptm}\fontsize{24}{5}\selectfont{Visión por Ordenador I}}\\
+% [2cm]
+
+% Autor del trabajo de investigación
+\textcolor{azulportada}
+{\fontfamily{ptm}\fontsize{45}{5}\selectfont{\textsc{\thetitle}}}\\
+[3cm]
+% Título del trabajo
+\textcolor{azulportada}
+{\fontfamily{ptm}\fontsize{16}{5}\selectfont{\theauthor}}\\
+%{\Huge\textbf{\thetitle}}\\
+[1.2cm]
+\includegraphics[width=10cm]{fonts/Logo ICAI.png}
+\\[1.8cm]
+
+{\fontfamily{ptm}\fontsize{16}{5}\selectfont{December 2024}}\\
+[4cm]
+\end{center}
+}}
+\end{titlepage}
+ 
+ \restoregeometry
+ %%%% Volvemos a la estructura de la página normal
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+{%\Large
+
+%%%Encabezamiento y pie de página
+%%% También se genera automáticamente
+%%% Mejor no tocarlo mucho.
+\renewcommand{\headrulewidth}{0.5pt}
+\fancyhead[R]{
+\textcolor{azulportada}{\fontfamily{ptm}\fontsize{10}{3}\selectfont{Proyecto Final de Visión por Ordenador I}}\\
+{\fontfamily{ptm}\fontsize{10}{3}\selectfont{\theauthor}}}
+\fancyhead[L]{
+  \textcolor{azulinterior}{\fontfamily{ptm}\fontsize{12}{4}\selectfont{\textbf{\thetitle}}}\\
+}
+
+
+\pagestyle{fancy}
+\renewcommand{\footrulewidth}{0.5pt}
+\fancyfoot[L]{\footnotesize Universidad Pontificia Comillas (ICAI) --- curso 2024-2025}
+\fancyfoot[C]{\vacio}
+\fancyfoot[R]{\footnotesize Página \thepage}
+
+%%%%%%%%%%%%%%%%%%%%
+
+% \newpage
+
+% \renewcommand{\contentsname}{Índice de contenidos}
+% \addtocontents{toc}{\protect\setcounter{tocdepth}{-1}} % Quita el índice de la tabla de contenidos
+% \tableofcontents
+% \addtocontents{toc}{\protect\setcounter{tocdepth}{3}}
+
+\newpage
+
+\textbf{¿Cuál es la versión y el nombre de la distribución de ROS instalada en el contenedor que se le ha proprocionado? 
+¿Cuándo finaliza su soporte? ¿Por qué?}
+
+
+\vspace{1cm}
+
+La versión de ROS instalada es la 2a, la distribuciones usadas son Humble y Jazzy. El soporte de Humble finaliza en mayo de 2027 
+y el de Jazzy en mayo de 2029 (en el día internacional de las tortugas). Ambas distribuciones surgieron en años pares (2022 y 2024 respectivamente)
+por lo que poseen el soporte extendido de 5 años.
+
+\vspace{0.5cm}
+
+\begin{lstlisting}
+  printenv ROS_VERSION # Extrae la versión de ROS
+  printenv ROS_DISTRO # Extrae la distribución de ROS
+\end{lstlisting}
+
+\vspace{1cm}
+
+
+\textbf{¿Qué otro comando se puede ejecutar con ros2 node?}
+
+
+\vspace{1cm}
+
+El primer comando inicializa un nodo de ROS2 que contiene información de una tortuga. El segundo comando 
+muestra los nodos que se encuentran actualmente en ejecución y el tercer comando muestra información sobre el nodo de la tortuga.
+
+\vspace{0.5cm}
+
+\begin{lstlisting}
+  ros2 run turtlesim turtlesim_node # Inicializa un nodo de ROS2
+  ros2 node list # Muestra los nodos en ejecución
+  ros2 node info /turtlesim # Muestra información sobre el nodo de la tortuga
+\end{lstlisting}
+
+\vspace{1cm}
+
+
+\textbf{¿Cómo se llama el tema (topic) donde /teleop\_turtle publica los comandos de movimiento?}
+
+
+\vspace{1cm}
+
+El tema se llama /turtle1/cmd\_vel, obtenido a través de la herramienta rqt\_graph.
+
+\vspace{0.5cm}
+
+\begin{lstlisting}
+  rqt_graph # Muestra un gráfico de nodos y temas en ROS2
+\end{lstlisting}
+
+\vspace{0.5cm}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{fonts/rqt_graph_1.png}
+    \caption{Gráfico de nodos y temas en ROS2 usando rqt\_graph}
+    \label{fig:rqt_graph}
+\end{figure}
+
+\vspace{1cm}
+
+
+\textbf{¿Qué recibe /michelangelo de /teleop\_turtle?}
+
+
+\vspace{1cm}
+
+No recibe nada ya que no todavía no se ha publicado nada, cunando se va a la terminal del nodo teleoperador y se pulsa una tecla, se muestra el 
+mensaje que se envía a través del topic. El mensaje es de tipo geometry\_msgs/msg/Twist y contiene la velocidad lineal y angular de la tortuga.
+
+\vspace{0.5cm}
+
+\begin{lstlisting}
+  ros2 topic echo /turtle1/cmd_vel # Muestra los mensajes publicados en un topic
+  ros2 topic info /turtle1/cmd_vel # Muestra información sobre un topic
+\end{lstlisting}
+
+\vspace{1cm}
+
+
+\textbf{¿Qué tipos de datos se intercambian entre el nodo de teleoperación y TurtleSim?}
+
+
+\vspace{1cm}
+
+Se intercambian 2 topics con distintos mensajes y una acción:
+
+\vspace{0.5cm}
+
+\begin{itemize}
+    \item /turtle1/cmd\_vel: Mensaje de tipo geometry\_msgs/msg/Twist que contiene la velocidad lineal y 
+    angular de la tortuga como vectores de 3 elementos float64 (x, y, z).
+    \item /turtle1/rotate\_absolute/\_action/status: Mensaje de tipo action\_msgs/msg/GoalStatusArray que 
+    contiene el estado de la acción como un array de enteros.
+    \item /turtle1/rotate\_absolute/\_action/feedback: acción de tipo Feedback.
+\end{itemize}
+
+\vspace{0.5cm}
+
+\begin{lstlisting}
+  ros2 topic info /turtle1/cmd_vel # Muestra información sobre un topic
+  ros2 interface show geometry_msgs/msg/Twist # Muestra información sobre un mensaje
+  ros2 topic info /turtle1/rotate_absolute/_action/status # Muestra información sobre un topic
+  ros2 interface show action_msgs/msg/GoalStatusArray # Muestra información sobre un mensaje
+\end{lstlisting}
+
+\vspace{1cm}
+
+
+\textbf{¿Qué campos hay que completar en package.xml? ¿Qué es exactamente una licencia en este contexto? 
+¿Puede citar algunas licencias de software?}
+
+
+\vspace{1cm}
+
+Hay que completar:
+
+\vspace{0.5cm}
+
+\begin{itemize}
+  \item description: Descripción del paquete.
+  \item maintainer: Nombre y correo electrónico del mantenedor del paquete.
+  \item license: Licencia del paquete.
+  \item exe\_depends: Dependencias del paquete, rclpy y std\_msgs. 
+\end{itemize}
+
+\vspace{0.5cm}
+
+En este contexto, una licencia es un contrato que establece los términos y condiciones bajo los cuales se puede usar, 
+modificar y distribuir un software. En concreto la Apache 2.0 es una licencia de software libre y de código abierto 
+que permite a los usuarios utilizar, modificar y distribuir el software siempre y cuando se de credito al autor 
+original y se incluya la licencia en cualquier copia o modificación del software. Otras licencias son la GPL, MIT, BSD.
+
+\vspace{1cm}
+
+
+\textbf{¿Qué hay que añadir a setup.py?}
+
+
+\vspace{1cm}
+
+Hay que añadir:
+
+\vspace{0.5cm}
+
+\begin{itemize}
+    \item maintainer: Nombre y correo electrónico del mantenedor del paquete.
+    \item maintainer\_email: Correo electrónico del mantenedor del paquete.
+    \item description: Descripción del paquete.
+    \item license: Licencia del paquete.
+    \item entry\_points: Punto de entrada del paquete (desde donde se ejecuta) tanto para el publisher como para el subscriber.
+\end{itemize}
+
+\vspace{1cm}
+
+
+\textbf{¿Cuáles son los pasos para construir y ejecutar un nodo?}
+
+
+\vspace{1cm}
+
+Los pasos son:
+
+\vspace{0.5cm}
+
+\begin{itemize}
+    \item Crear un workspace de ROS2.
+    \item Crear un paquete.
+    \item Diseñar los nodos y mensajes necesarios.
+    \item Modificar el package.xml para añadir el mantenedor,  la descripción, la licencia y las dependencias.
+    \item Modificar el setup.py para añadir el mantenedor, la descripción, la licencia y el punto de entrada.
+    \item Compilar el paquete.
+    \item Ejecutar el nodo.
+\end{itemize}
+
+\vspace{0.5cm}
+
+\begin{lstlisting}
+  mkdir -p ~/ros2_ws/src # Crea un workspace de ROS2
+  cd ~/ros2_ws/src
+  ros2 pkg create --build-type ament_python <package_name> # Crea un paquete
+  # Programar los nodos y mensajes necesarios
+  # Modificar package.xml y setup.py
+  colcon build # Compila el paquete
+  source ~/ros2_ws/install/setup.bash # Añade el paquete al workspace
+  ros2 run <package_name> <node_name> # Ejecuta el nodo
+\end{lstlisting}
+
+\vspace{1cm}
+
+
+\textbf{En sus propias palabras, explique brevemente cómo se comunica el nodo parlante
+(talker) con el oyente (listener)}
+
+
+\vspace{1cm}
+
+El nodo publisher, publica un mensaje en un tópic (un canal de comunicación), el nodo subscriber está suscrito a dicho topic
+de tal manera que cuando se publica un mensaje en dicho canal, el nodo subscriber recibe el mensaje y lo procesa.
+
+\vspace{1cm}
+
+
+\textbf{Utilice las herramientas de terminal de ROS 2 y rqt para descubrir los nodos que
+operan el TurtleBot3, así como los publicadores y suscriptores que tienen. Explore también la estructura
+y el contenido de los mensajes e intente explicar con sus palabras para qué sirve cada nodo a partir de
+esa información. Ignore todos los temas (topics) que empiecen con el prefijo rcl\_}
+
+
+\vspace{1cm}
+
+Bla, bla bla...
+
+\vspace{1cm}
+
+
+\textbf{¿Qué criterio de signos utiliza el TurtleBot3 para la velocidad angular $\omega$ por defecto? ¿Coincide con el habitual?}
+
+
+\vspace{1cm}
+
+Bla, bla bla...
+
+\vspace{1cm}
+
+
+\textbf{Las tortugas bebé corren hacia el mar}
+
+\end{document}
+
+
+

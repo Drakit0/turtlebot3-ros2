@@ -1,0 +1,40 @@
+# ROS2 specific
+build/
+install/
+log/
+.colcon/
+.ros/
+
+# Python specific
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info
+dist/
+build/
+.eggs/
+
+# CMake specific
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# VSCode specific
+.vscode/
+
+# General
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# LaTeX specific
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.synctex.gz
+*.toc
