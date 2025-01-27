@@ -35,6 +35,8 @@ Thumbs.db
 *.bbl
 *.blg
 *.log
+*.fls
+*.fdb_latexmk
 *.out
 *.synctex.gz
 *.toc
