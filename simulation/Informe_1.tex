@@ -231,8 +231,8 @@ El tema se llama /turtle1/cmd\_vel, obtenido a través de la herramienta rqt\_gr
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{fonts/rqt_graph_1.png}
-    \caption{Gráfico de nodos y temas en ROS2 usando rqt\_graph}
-    \label{fig:rqt_graph}
+    \caption{Gráfico de nodos y temas en ROS2 usando rqt\_graph, autoría propia}
+    \label{fig:rqt_graph_1}
 \end{figure}
 
 \vspace{1cm}
@@ -387,7 +387,54 @@ esa información. Ignore todos los temas (topics) que empiecen con el prefijo rc
 
 \vspace{1cm}
 
-Bla, bla bla...
+Existen 4 nodos en ejecución: /turtlebot3\_node, /diff\_drive\_controller, /robot\_state\_publisher y /ld08.
+
+\vspace{0.5cm}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{fonts/rqt_graph_2.jpeg}
+  \caption{Gráfico de nodos y temas en ROS2 usando rqt\_graph a través de una terminal con protocolo X11, autoría propia.}
+  \label{fig:rqt_graph_2}
+\end{figure}
+
+\vspace{0.5cm}
+
+Descripción de los nodos:
+
+\begin{itemize}
+  \item /turtlebot3\_node: Controla el movimiento del TurtleBot3 y publica el topic /imu y /joint\_states.
+  \item /diff\_drive\_controller: Controla el movimiento de las ruedas del TurtleBot3 y se suscribe a los topics /imu y /joint\_states.
+  \item /robot\_state\_publisher: Publica el estado del robot y se suscribe al topic /joint\_states.
+  \item /ld08: Publica la distancia de los objetos detectados por el sensor LD08, este nodo 
+        de momento no publica ni se suscribe a ningún topic.
+\end{itemize}
+
+\vspace{0.5cm}
+
+Posteriormente se obtuvieron los topics a través de la terminal con el comando ros2 topic list:
+
+\vspace{0.5cm}
+
+\begin{itemize}
+  \item /battery\_state: Topic con mensaje de tipo sensor\_msgs/BatteryState que contiene información sobre el estado de la batería.
+  \item /cmd\_vel: Topic con mensaje de tipo geometry\_msgs/Twist que contiene la velocidad lineal y angular del robot.
+  \item /imu: Topic con mensaje de tipo sensor\_msgs/Imu que contiene la orientación y velocidad angular del robot.
+  \item /joint\_states: Topic con mensaje de tipo sensor\_msgs/JointState que contiene la posición de las ruedas del robot.
+  \item /magnetic\_field: Topic con mensaje de tipo sensor\_msgs/MagneticField que contiene la intensidad del campo magnético.
+  \item /odom: Topic con mensaje de tipo nav\_msgs/Odometry que contiene la posición y orientación del robot.
+  \item /parameter\_events: Topic con mensaje de tipo rcl\_interfaces/msg/ParameterEvent que contiene los parámetros
+  modificados por el evento.
+  \item /robot\_description: Topic con mensaje de tipo std\_msgs/msg/String que contiene la descripción del robot.
+  \item /rosout: Topic con mensaje de tipo rcl\_interfaces/msg/Log que contiene información sobre los logs del sistema.
+  \item /scan: Topic con mensaje de tipo sensor\_msgs/LaserScan que contiene la información del lidar LD08.
+  \item /sensor\_state: Topic con mensaje de tipo sensor\_msgs/Range que contiene la distancia de los objetos 
+  detectados por el lidar.
+  \item /tf: Topic con mensaje de tipo tf2\_msgs/TFMessage que contiene la información de la transformación entre
+  los distintos frames del robot.
+  \item /tf\_static: Topic con mensaje de tipo tf2\_msgs/TFMessage que contiene la información de la transformación
+  estática entre los distintos frames del robot.
+\end{itemize}
 
 \vspace{1cm}
 
@@ -397,12 +444,23 @@ Bla, bla bla...
 
 \vspace{1cm}
 
-Bla, bla bla...
+Después de ejecutar el nodo de teleoperación y desplazar el robot, se observa la siguiente información en la terminal:
 
-\vspace{1cm}
+\vspace{0.5cm}
 
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{fonts/twist.jpeg}
+  \caption{Resultado tras el movimiento del TurtleBot3 ejecutado el nodo de teleoperación, autoría propia.}
+  \label{fig:Twist}
+\end{figure}
 
-\textbf{Las tortugas bebé corren hacia el mar}
+\vspace{0.5cm}
+
+Dado que el robot se desplaza en sentido horario, la velocidad angular $\omega$ es positiva. El criterio de signos utilizado por el TurtleBot3
+para la velocidad angular es el siguiente: si $\omega$ es positiva, el robot se desplaza en sentido horario y si $\omega$ es negativa, el robot se desplaza en sentido antihorario.
+Si el robot siguiera el criterio habitual (el de la mano derecha), la velocidad angular sería negativa para el sentido horario y positiva para el sentido antihorario.
+Por todo ello se concluye que el criterio del robot no coincide con el habitual.
 
 \end{document}
 
