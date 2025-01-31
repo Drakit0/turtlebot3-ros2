@@ -34,6 +34,15 @@ class KeyboardDirModification(Node):
             msg = Twist()
             msg.linear.x = 0.1
             self.cmd_vel_publisher.publish(msg)
+        elif msg.data == " ":
+            msg = Twist()
+            msg.linear.x = 0
+            msg.linear.y = 0
+            msg.linear.z = 0
+            msg.angular.x = 0
+            msg.angular.y = 0
+            msg.angular.z = 0
+            self.cmd_vel_publisher.publish(msg)
         
     def listener_callback_lidar(self, msg):
         self.get_logger().info('I heard: "%s"' % msg.data)
@@ -46,7 +55,7 @@ class KeyboardDirModification(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    minimal_subscriber = MinimalSubscriber()
+    minimal_subscriber = KeyboardDirModification()
 
     rclpy.spin(minimal_subscriber)
 
