@@ -47,15 +47,31 @@ class KeyboardDirModification(Node):
     def listener_callback_keyboard(self, msg):
         self.get_logger().info('I heard: "%s"' % msg.data)
         
-        if msg.data == 'w':
+        if msg.data == "w": # Forward
             cmd_vel_msg = Twist()
             cmd_vel_msg.linear.x = 0.1
             self.cmd_vel_publisher.publish(cmd_vel_msg)
-        elif msg.data == " ":
-            cmd_vel_msg = self.create_stop_msg()
+            
+        elif msg.data == "s": # Backward
+            cmd_vel_msg = Twist()
+            cmd_vel_msg.linear.x = -0.1
             self.cmd_vel_publisher.publish(cmd_vel_msg)
             
-    def create_stop_msg():
+        elif msg.data == "a": # Rotate Left
+            cmd_vel_msg = Twist()
+            cmd_vel_msg.angular.z = 0.1
+            self.cmd_vel_publisher.publish(cmd_vel_msg)
+            
+        elif msg.data == "d": # Rotate Right
+            cmd_vel_msg = Twist()
+            cmd_vel_msg.angular.z = -0.1
+            self.cmd_vel_publisher.publish(cmd_vel_msg)
+        
+        elif msg.data == "space": # Stop
+            cmd_vel_msg = Twist()
+            self.cmd_vel_publisher.publish(cmd_vel_msg)
+            
+    def create_stop_msg(): # It is enough to send an empty Twist message to stop the robot
         msg = Twist()
         msg.linear.x = 0
         msg.linear.y = 0
@@ -69,6 +85,7 @@ class KeyboardDirModification(Node):
         ranges = msg.ranges
         start_idx = 3
         end_idx = 7
+        
         if any(map(lambda x: x < self.stop_distance, ranges[start_idx: end_idx])):
             stop_msg = self.create_stop_msg()
             self.cmd_vel_publisher.publish(stop_msg)
