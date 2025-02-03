@@ -3,9 +3,9 @@
 <package format="3">
   <name>amr_teleoperation</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="turtlebot@todo.todo">turtlebot</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Turtlebot teleoperation package</description>
+  <maintainer email="58083467+Drakit0@users.noreply.github.com">Pablo Tuñón</maintainer>
+  <license>Apache License 2.0</license>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>

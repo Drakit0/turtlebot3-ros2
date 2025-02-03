@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
+from sensor_msgs.msg import LaserScan
 
 from amr_msgs.msg import KeyboardMsg
 
@@ -13,10 +14,10 @@ from rclpy.qos import (
 
 
 
-class KeyboardDirModification(Node):
+class Teleoperator(Node):
 
     def __init__(self):
-        super().__init__('minimal_subscriber')
+        super().__init__('teleoperation_node')
         self.keyboard_subscription = self.create_subscription(
             KeyboardMsg,
             'keyboard_input',
@@ -30,19 +31,19 @@ class KeyboardDirModification(Node):
         qos_profile = QoSProfile(
             history=QoSHistoryPolicy.KEEP_LAST,
             depth=10,
-            reliability=QoSReliabilityPolicy.RELIABLE, # Make sure that the robot receives the command to stop
+            reliability=QoSReliabilityPolicy.BEST_EFFORT, # Make sure that the robot receives the command to stop
             durability=QoSDurabilityPolicy.VOLATILE,
         )
         
         self.lidar_subscription = self.create_subscription(
-            KeyboardMsg,
+            LaserScan,
             'scan',
             self.listener_callback_lidar,
             qos_profile=qos_profile)
             
         self.lidar_subscription
         
-        self.stop_distance = 10
+        self.stop_distance = 0.25
 
     def listener_callback_keyboard(self, msg):
         self.get_logger().info('I heard: "%s"' % msg.key)
@@ -59,35 +60,27 @@ class KeyboardDirModification(Node):
             
         elif msg.key == "a": # Rotate Left
             cmd_vel_msg = Twist()
-            cmd_vel_msg.angular.z = 0.1
+            cmd_vel_msg.angular.z = -0.9
             self.cmd_vel_publisher.publish(cmd_vel_msg)
             
         elif msg.key == "d": # Rotate Right
             cmd_vel_msg = Twist()
-            cmd_vel_msg.angular.z = -0.1
+            cmd_vel_msg.angular.z = 0.9
             self.cmd_vel_publisher.publish(cmd_vel_msg)
         
         elif msg.key == "space": # Stop
             cmd_vel_msg = Twist()
             self.cmd_vel_publisher.publish(cmd_vel_msg)
-            
-    def create_stop_msg(): # It is enough to send an empty Twist message to stop the robot
-        msg = Twist()
-        msg.linear.x = 0
-        msg.linear.y = 0
-        msg.linear.z = 0
-        msg.angular.x = 0
-        msg.angular.y = 0
-        msg.angular.z = 0
-        return msg
         
     def listener_callback_lidar(self, msg):
         ranges = msg.ranges
-        start_idx = 3
-        end_idx = 7
+        front = min(ranges[:10] + ranges[-10:])
+        center = len(ranges) // 2
+        back = min(ranges[center - 10:center + 10])
         
-        if any(map(lambda x: x < self.stop_distance, ranges[start_idx: end_idx])):
-            stop_msg = self.create_stop_msg()
+
+        if min(front, back) < self.stop_distance:
+            stop_msg = Twist()
             self.cmd_vel_publisher.publish(stop_msg)
             self.get_logger().info('STOP!!!')
         
@@ -99,7 +92,7 @@ class KeyboardDirModification(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    minimal_subscriber = KeyboardDirModification()
+    minimal_subscriber = Teleoperator()
 
     rclpy.spin(minimal_subscriber)
 

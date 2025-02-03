@@ -19,6 +19,9 @@ class KeyboardPublisher(Node):
         self.publisher_.publish(msg)
             
     def release(self, key):
+        # msg = KeyboardMsg()
+        # msg.key = "space"
+        # self.publisher_.publish(msg)
         pass
 
 

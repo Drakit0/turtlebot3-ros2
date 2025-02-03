@@ -14,9 +14,9 @@ setup(
     install_requires=['setuptools', "sshkeyboard"],
     zip_safe=True,
     maintainer='turtlebot',
-    maintainer_email='turtlebot@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
+    maintainer_email='58083467+Drakit0@users.noreply.github.com',
+    description='Turtlebot teleoperation package',
+    license='Apache License 2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
