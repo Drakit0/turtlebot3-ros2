@@ -11,7 +11,7 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', "sshkeyboard"],
     zip_safe=True,
     maintainer='turtlebot',
     maintainer_email='turtlebot@todo.todo',
@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'teleoperation_node = amr_teleoperation.teleoperation_node:main'
+            'teleoperation_node = amr_teleoperation.teleoperation_node:main',
+            'keyboard_node = amr_teleoperation.keyboard_node:main'
         ],
     },
 )

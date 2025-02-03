@@ -20,7 +20,7 @@ class KeyboardDirModification(Node):
         self.keyboard_subscription = self.create_subscription(
             KeyboardMsg,
             'keyboard_input',
-            self.listener_callback,
+            self.listener_callback_keyboard,
             10)
         
         self.keyboard_subscription
@@ -45,29 +45,29 @@ class KeyboardDirModification(Node):
         self.stop_distance = 10
 
     def listener_callback_keyboard(self, msg):
-        self.get_logger().info('I heard: "%s"' % msg.data)
+        self.get_logger().info('I heard: "%s"' % msg.key)
         
-        if msg.data == "w": # Forward
+        if msg.key == "w": # Forward
             cmd_vel_msg = Twist()
             cmd_vel_msg.linear.x = 0.1
             self.cmd_vel_publisher.publish(cmd_vel_msg)
             
-        elif msg.data == "s": # Backward
+        elif msg.key == "s": # Backward
             cmd_vel_msg = Twist()
             cmd_vel_msg.linear.x = -0.1
             self.cmd_vel_publisher.publish(cmd_vel_msg)
             
-        elif msg.data == "a": # Rotate Left
+        elif msg.key == "a": # Rotate Left
             cmd_vel_msg = Twist()
             cmd_vel_msg.angular.z = 0.1
             self.cmd_vel_publisher.publish(cmd_vel_msg)
             
-        elif msg.data == "d": # Rotate Right
+        elif msg.key == "d": # Rotate Right
             cmd_vel_msg = Twist()
             cmd_vel_msg.angular.z = -0.1
             self.cmd_vel_publisher.publish(cmd_vel_msg)
         
-        elif msg.data == "space": # Stop
+        elif msg.key == "space": # Stop
             cmd_vel_msg = Twist()
             self.cmd_vel_publisher.publish(cmd_vel_msg)
             

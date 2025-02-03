@@ -11,14 +11,14 @@ class KeyboardPublisher(Node):
     def __init__(self):
         super().__init__('keyboard_publisher')
         self.publisher_ = self.create_publisher(KeyboardMsg, 'keyboard_input', 10)
-        listen_keyboard(on_press=press, on_release=release)
+        listen_keyboard(on_press=self.press, on_release=self.release)
         
-    def press(key):
-        msg = String()
-        msg.data = key
+    def press(self, key):
+        msg = KeyboardMsg()
+        msg.key = key
         self.publisher_.publish(msg)
             
-    def release(key):
+    def release(self, key):
         pass
 
 
