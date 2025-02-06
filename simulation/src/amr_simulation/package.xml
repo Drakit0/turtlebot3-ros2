@@ -1,14 +1,17 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>tutorial_pubsub_py</name>
-  <version>0.0.0</version>
-  <description>Publisher subscriber example</description>
-  <maintainer email="58083467+Drakit0@users.noreply.github.com">dr-dr4k3</maintainer>
+  <name>amr_simulation</name>
+  <version>1.0.1</version>
+  <description>Simulation stack for Autonomous Mobile Robots @ Comillas ICAI.</description>
+  <maintainer email="jboal@comillas.edu">Jaime Boal</maintainer>
   <license>Apache License 2.0</license>
 
   <exec_depend>rclpy</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>amr_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
