@@ -4,6 +4,9 @@ install/
 log/
 .colcon/
 .ros/
+# ROS2 container
+.devcontainer 
+
 
 # Python specific
 __pycache__/
@@ -41,5 +44,6 @@ Thumbs.db
 *.synctex.gz
 *.toc
 
-# ROS2 container
-.devcontainer
+# files
+*.pdf
+*.mp4
