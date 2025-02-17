@@ -1,4 +1,5 @@
 import rclpy
+import numpy as np
 from rclpy.time import Time
 from rclpy.node import Node
 
@@ -32,6 +33,7 @@ class Vel_Odometry(Node):
     def odom_callback(self, msg:Odometry):
         
         x = msg.pose.pose.position.x
+        y = msg.pose.pose.position.y
         quat_w = msg.pose.pose.orientation.w
         quat_x = msg.pose.pose.orientation.x
         quat_y = msg.pose.pose.orientation.y
@@ -43,11 +45,12 @@ class Vel_Odometry(Node):
         
         if self.prev_odom[0] == None:
             self.prev_odom[0] = x
-            self.prev_odom[1] = th_h
-            self.prev_odom[2] = t1
+            self.prev_odom[1] = y
+            self.prev_odom[2] = th_h
+            self.prev_odom[3] = t1
             
         else:
-            z_v = (x - self.prev_odom[0])/((t1 - self.prev_odom[2])*1e-9)
+            z_v = np.sqrt((x-self.prev_odom[0])**2 + (y-self.prev_odom[1])**2)/((t1 - self.prev_odom[2])*1e-9)
             z_w = (th_h - self.prev_odom[1])/((t1 - self.prev_odom[2])*1e-9)
             self._publish_odometry(z_v, z_w)
             
