@@ -44,6 +44,7 @@ class Vel_Odometry(LifecycleNode):
 
         """
         odom_msg = Odometry()
+        odom_msg.header.stamp = self.get_clock().now().to_msg()
         odom_msg.twist.twist.linear.x = z_v
         odom_msg.twist.twist.angular.z = z_w
 
