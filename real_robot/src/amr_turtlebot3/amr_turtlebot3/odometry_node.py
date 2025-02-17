@@ -15,7 +15,7 @@ class Vel_Odometry(LifecycleNode):
         self.get_logger().info(
             f"Transitioning from '{state.label}' to 'inactive' state."
         )
-        self.prev_odom = [None, None, None]
+        self.prev_odom = [None, None, None, None]
 
         self._odom_subscriber = self.create_subscription(
             Odometry, "/odom", self.odom_callback, 10

@@ -22,9 +22,9 @@ class WallFollower:
         """
         self._dt: float = dt
         self._state = WallFollowerStates.STOP 
-        self.Kp = 2
+        self.Kp = 6 # 2
         self.K = 10
-        self.Ti = 2
+        self.Ti = 0.5
         self.Td = 3
         self.last_measurement_wall_distance = None
         self.integral = 0.0
@@ -83,12 +83,16 @@ class WallFollower:
 
         # get measurements
         n = len(z_scan) // 4
+        n_45 = len(z_scan) // 8
         front = min(z_scan[-n_points:] + z_scan[:n_points])
         front_close = front < self.current_min_dist
         left = min(z_scan[n-n_points: n+n_points])
         right = min(z_scan[-n-n_points: -n+n_points])
         left_close = left < self.current_min_dist
         right_close = right < self.current_min_dist
+        right_45 = min(z_scan[n_45-n_points: n_45+n_points])
+        left_45 = min(z_scan[n_45-n-n_points: n_45-n+n_points])
+
         
         # Transitions
         if self._state is WallFollowerStates.STOP:
@@ -104,16 +108,19 @@ class WallFollower:
                     self._state = WallFollowerStates.LEFT
                     
         elif self._state is WallFollowerStates.RIGHT:
-            if not front < 0.4:
+            if front >= 0.4 and left_45 > 0.20 and right_45 > 0.20:
+                self.integral = 0
                 self._state = WallFollowerStates.FORWARD
                 
         elif self._state is WallFollowerStates.LEFT:
-            if not front < 0.4:
+            if front >= 0.4 and left_45 > 0.20 and right_45 > 0.20:
+                self.integral = 0
                 self._state = WallFollowerStates.FORWARD
                 
         elif self._state is WallFollowerStates.TURN180:
-            forward_free = front > 0.4
+            forward_free = front > 0.4 and left_45 > 0.20 and right_45 > 0.20
             if forward_free:
+                self.integral = 0
                 self._state = WallFollowerStates.FORWARD
 
         # Actions

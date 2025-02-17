@@ -118,6 +118,7 @@ class WallFollowerNode(LifecycleNode):
 
             # TODO: 2.9. Parse LiDAR measurements from the LaserScan message (i.e., read z_scan).
             z_scan: list[float] = scan_msg.ranges
+            z_scan = [scan if scan != None else 0.15 for scan in z_scan]
 
             # Execute wall follower
             v, w = self._wall_follower.compute_commands(z_scan, z_v, z_w)
@@ -137,7 +138,7 @@ class WallFollowerNode(LifecycleNode):
         # TODO: 2.11. Complete the function body with your code (i.e., replace the pass statement).
         cmd_vel_msg = Twist()
         cmd_vel_msg.linear.x = v
-        cmd_vel_msg.angular.z = w
+        cmd_vel_msg.angular.z = -1.0*w # + in the simulation
         self._cmd_vel_publisher.publish(cmd_vel_msg)
 
 

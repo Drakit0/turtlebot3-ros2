@@ -27,7 +27,7 @@ def generate_launch_description():
     #     parameters=[{"start": start}],
     # )
     
-    odometry_node = Node(
+    odometry_node = LifecycleNode(
         package="amr_turtlebot3",
         executable="odometry_node",
         name="odometry_node",
@@ -44,6 +44,7 @@ def generate_launch_description():
         parameters=[
             {
                 "node_startup_order": (
+                    "odometry_node",
                     "wall_follower",
                     # "coppeliasim",  # Must be started last
                 )
