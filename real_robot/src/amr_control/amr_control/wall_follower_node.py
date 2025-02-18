@@ -16,6 +16,7 @@ from sensor_msgs.msg import LaserScan
 import traceback
 
 from amr_control.wall_follower import WallFollower
+import numpy as np
 
 
 class WallFollowerNode(LifecycleNode):
@@ -118,7 +119,7 @@ class WallFollowerNode(LifecycleNode):
 
             # TODO: 2.9. Parse LiDAR measurements from the LaserScan message (i.e., read z_scan).
             z_scan: list[float] = scan_msg.ranges
-            z_scan = [scan if scan != None else 0.15 for scan in z_scan]
+            z_scan = [scan if not np.isnan(scan) else 0.15 for scan in z_scan]
 
             # Execute wall follower
             v, w = self._wall_follower.compute_commands(z_scan, z_v, z_w)
