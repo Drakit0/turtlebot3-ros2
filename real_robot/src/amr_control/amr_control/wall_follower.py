@@ -109,6 +109,8 @@ class WallFollower:
         d_right_45 = z_scan[-(len(z_scan) // 8)]
         d_left = z_scan[len(z_scan) // 4]
         d_left_45 = z_scan[len(z_scan) // 8]
+        d_left_middle = z_scan[len(z_scan) // 8 + len(z_scan)//16]
+        d_right_middle = z_scan[-(len(z_scan) // 8) - (len(z_scan) // 16)]
         
         rclpy.logging.get_logger("state").warn(
             f"state {self._state}"
@@ -123,32 +125,41 @@ class WallFollower:
             # rclpy.logging.get_logger("d1, d2").warn(
             #     f"d1: {d1:.03f}, d2: {d2:.03f}"
             # )   
+            if front_close:
+                if d_right > self.current_min_dist or d_left > self.current_min_dist:
+                    if d_right > d_left:
+                        self._state = WallFollowerStates.RIGHT
+                    else:
+                        self._state = WallFollowerStates.LEFT
+                else:
+                    self._state = WallFollowerStates.TURN180
             
-            if front_close and d_right > self.current_min_dist and d_right > d_left:
-                self._state = WallFollowerStates.RIGHT
+            # if front_close and d_right > self.current_min_dist and d_right > d_left:
+            #     self._state = WallFollowerStates.RIGHT
                 
-            elif front_close and d_left > self.current_min_dist and d_left > d_right:
-                self._state = WallFollowerStates.LEFT
+            # elif front_close and d_left > self.current_min_dist and d_left > d_right:
+            #     self._state = WallFollowerStates.LEFT
                 
-            elif front_close and d_right < self.current_min_dist and d_left < self.current_min_dist:
-                self._state = WallFollowerStates.TURN180
+            # elif front_close and d_right < self.current_min_dist and d_left < self.current_min_dist:
+            #     self._state = WallFollowerStates.TURN180
                     
         elif self._state is WallFollowerStates.RIGHT:
             rclpy.logging.get_logger("d_right, d_right_45").warn(
                 f"d_right: {d_left:.03f}, d_right_45: {d_left_45:.03f}"
             )
-            if not front_close and np.isclose(d_left * np.sqrt(2), d_left_45, atol=0.01):
+            if not front_close and np.isclose(d_left * np.sqrt(2), d_left_45, atol=0.01)  and np.isclose(d_left, 0.923879*d_left_middle, atol=0.01):
                 self._state = WallFollowerStates.FORWARD
                 
         elif self._state is WallFollowerStates.LEFT:
             rclpy.logging.get_logger("d_left, d_left_45").warn(
                 f"d_left: {d_right:.03f}, d_left_45: {d_right_45:.03f}, sqrt2:{d_right * np.sqrt(2):.03f}, close: {np.isclose(d_right * np.sqrt(2), d_right_45, atol=0.02)}"
             )
-            if not front_close and np.isclose(d_right * np.sqrt(2), d_right_45, atol=0.01):
+            # np.cos(np.pi/8) = 0.9238795325112867
+            if not front_close and np.isclose(d_right * np.sqrt(2), d_right_45, atol=0.01) and np.isclose(d_right, 0.923879*d_right_middle, atol=0.02):
                 self._state = WallFollowerStates.FORWARD
                 
         elif self._state is WallFollowerStates.TURN180:
-            if not front_close and np.isclose(d_right * np.sqrt(2), d_right_45, atol=0.01):
+            if not front_close and np.isclose(d_right * np.sqrt(2), d_right_45, atol=0.01) and np.isclose(d_right, 0.923879*d_right_middle, atol=0.02):
                 self._state = WallFollowerStates.FORWARD
             
 
