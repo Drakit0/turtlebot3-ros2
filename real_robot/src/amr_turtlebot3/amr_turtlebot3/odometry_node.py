@@ -72,7 +72,11 @@ class Vel_Odometry(LifecycleNode):
         else:
             z_v = np.sqrt((x - self.prev_odom[0]) ** 2 + (y - self.prev_odom[1]) ** 2) / ((t1 - self.prev_odom[2]) * 1e-9)
             z_w = (th_h - self.prev_odom[1]) / ((t1 - self.prev_odom[2]) * 1e-9)
-            self._publish_odometry(z_v, z_w)
+            # self._publish_odometry(z_v, z_w)
+            msg.twist.twist.linear.x = z_v
+            msg.twist.twist.angular.z = z_w
+
+            self._odometry_publisher.publish(msg)
 
 
 def main(args=None):

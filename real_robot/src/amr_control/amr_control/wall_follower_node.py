@@ -68,7 +68,7 @@ class WallFollowerNode(LifecycleNode):
             )
 
             ts = message_filters.ApproximateTimeSynchronizer(
-                self._subscribers, queue_size=10, slop=0.25
+                self._subscribers, queue_size=2, slop=0.25
             )
             ts.registerCallback(self._compute_commands_callback)
             # TODO: 4.12. Add /pose to the synced subscriptions only if localization is enabled.

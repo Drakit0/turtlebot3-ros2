@@ -174,5 +174,5 @@ class WallFollower:
         elif self._state is WallFollowerStates.TURN180:
             w = 0.3
             v = 0.0
-
+        rclpy.logging.get_logger("msg").warn(f"{w:.02f}, {v:.02f}")
         return v, w
