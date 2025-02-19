@@ -35,21 +35,6 @@ class Vel_Odometry(LifecycleNode):
 
         return super().on_activate(state)
 
-    def _publish_odometry(self, z_v: float, z_w: float) -> None:
-        """Publishes odometry measurements in a nav_msgs.msg.Odometry message.
-
-        Args:
-            z_v: Linear velocity of the robot center [m/s].
-            z_w: Angular velocity of the robot center [rad/s].
-
-        """
-        odom_msg = Odometry()
-        odom_msg.header.stamp = self.get_clock().now().to_msg()
-        odom_msg.twist.twist.linear.x = z_v
-        odom_msg.twist.twist.angular.z = z_w
-
-        self._odometry_publisher.publish(odom_msg)
-
     def odom_callback(self, msg: Odometry):
 
         x = msg.pose.pose.position.x
@@ -70,9 +55,10 @@ class Vel_Odometry(LifecycleNode):
             self.prev_odom[3] = t1
 
         else:
-            z_v = np.sqrt((x - self.prev_odom[0]) ** 2 + (y - self.prev_odom[1]) ** 2) / ((t1 - self.prev_odom[2]) * 1e-9)
+            z_v = np.sqrt(
+                (x - self.prev_odom[0]) ** 2 + (y - self.prev_odom[1]) ** 2
+            ) / ((t1 - self.prev_odom[2]) * 1e-9)
             z_w = (th_h - self.prev_odom[1]) / ((t1 - self.prev_odom[2]) * 1e-9)
-            # self._publish_odometry(z_v, z_w)
             msg.twist.twist.linear.x = z_v
             msg.twist.twist.angular.z = z_w
 
