@@ -60,8 +60,12 @@ class WallFollower:
         
         index = - (len(z_scan) // 4)
         measured_distance = z_scan[index]
+        measured_distance_left = z_scan[-index]
         
-        error = self.reference_distance - measured_distance
+        if measured_distance_left < measured_distance + 0.1:
+            error = measured_distance_left - self.reference_distance
+        else:
+            error = self.reference_distance - measured_distance
         
         # First derivative run is 0
         if self.last_error is None:
