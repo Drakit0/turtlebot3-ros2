@@ -4,6 +4,7 @@ import numpy as np
 import os
 import pytz
 import random
+import rclpy
 
 from amr_localization.maps import Map
 from matplotlib import pyplot as plt
@@ -96,6 +97,22 @@ class ParticleFilter:
         self._iteration += 1
 
         # TODO: 3.5. Complete the function body with your code.
+        v_with_noise = v + np.random.normal(0, self._sigma_v, self._particle_count)
+        w_with_noise = w  + np.random.normal(0, self._sigma_w, self._particle_count)
+        rclpy.logging.get_logger("cos").warn(f"{np}")
+        rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array([0.4, 0.0]))}")
+        rclpy.logging.get_logger("cos").warn(f"{type(self._particles[:, 2])}")
+        rclpy.logging.get_logger("cos").warn(f"{self._particles[:, 2]}")
+        rclpy.logging.get_logger("cos").warn(f"{self._particles.shape}")
+        rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array(self._particles[:, 2]))}")
+        x_new = self._particles[:, 0] + v_with_noise * np.cos(self._particles[:, 2]) * self._dt
+        y_new = self._particles[:, 1] + v_with_noise * np.sin(self._particles[:, 2]) * self._dt
+        theta_new = (self._particles[:, 2] + w_with_noise * self._dt) % (2 * np.pi)
+        self._particles[:, 0] = x_new
+        self._particles[:, 1] = y_new
+        self._particles[:, 2] = theta_new
+        
+        self._map.check_collision
         
     def resample(self, measurements: list[float]) -> None:
         """Samples a new set of particles.
@@ -206,6 +223,25 @@ class ParticleFilter:
         particles = np.empty((particle_count, 3), dtype=object)
 
         # TODO: 3.4. Complete the missing function body with your code.
+        if global_localization:
+            x_min, y_min, x_max, y_max = self._map.bounds()
+            not_contained = np.ones(particle_count, dtype=np.bool_)
+            while any(not_contained):
+                particle_to_create_num = np.sum(not_contained)
+                particles[not_contained, 0] = np.random.sample(particle_to_create_num)*(x_max - x_min) + x_min
+                particles[not_contained, 1] = np.random.sample(particle_to_create_num)*(y_max - y_min) + y_min
+                particles[not_contained, 2] = np.random.choice([0, np.pi/2, np.pi, 3*np.pi/2], particle_to_create_num)
+                not_contained = np.array(list(map(lambda p: not self._map.contains(p[:2]), particles)))
+            
+        else:
+            not_contained = np.ones(particle_count, dtype=np.bool_)
+            
+            while any(not_contained):
+                particle_to_create_num = np.sum(not_contained)
+                particles[:, 0] = np.random.normal(initial_pose[0], initial_pose_sigma[0], particle_to_create_num)
+                particles[:, 1] = np.random.normal(initial_pose[1], initial_pose_sigma[1], particle_to_create_num)
+                particles[:, 2] = np.random.normal(initial_pose[2], initial_pose_sigma[2], particle_to_create_num)
+                not_contained = np.array(list(map(lambda p: not self._map.contains(p[:2]), particles)))
         
         return particles
 

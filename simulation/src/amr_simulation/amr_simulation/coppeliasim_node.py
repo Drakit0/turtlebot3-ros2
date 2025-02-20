@@ -27,7 +27,6 @@ class CoppeliaSimNode(LifecycleNode):
         self.declare_parameter("goal", (float("inf"), float("inf")))
         self.declare_parameter("goal_tolerance", 0.15)
         self.declare_parameter("start", (0.0, 0.0, 0.0))
-        self.declare_parameter("ip", "")
 
     def on_configure(self, state: LifecycleState) -> TransitionCallbackReturn:
         """Handles a configuring transition.
@@ -51,27 +50,51 @@ class CoppeliaSimNode(LifecycleNode):
             start = tuple(
                 self.get_parameter("start").get_parameter_value().double_array_value.tolist()
             )
-            ip = self.get_parameter("ip").get_parameter_value().string_value
 
             # Subscribers
             # TODO: 2.12. Subscribe to /cmd_vel. Connect it with with _next_step_callback.
-            self.cmd_vel_subscriber = self.create_subscription(TwistStamped, "/cmd_vel", self._next_step_callback, 10)
-            
+            self._cmd_vel_subscription = self.create_subscription(TwistStamped, "/cmd_vel", self._next_step_callback, 10)
             # TODO: 3.3. Sync the /pose and /cmd_vel subscribers if enable_localization is True.
+            if enable_localization:
+                # self._pose_subscription = self.create_subscription(PoseStamped(), "/pose", self._next_step_callback, 10)
+                self._subscribers: list[message_filters.Subscriber] = []
+                # Append as many topics as needed
+                self._subscribers.append(
+                    message_filters.Subscriber(
+                        self,
+                        TwistStamped,
+                        "/cmd_vel",
+                        qos_profile=10
+                    )
+                )
+                self._subscribers.append(
+                    message_filters.Subscriber(
+                        self,
+                        PoseStamped,
+                        "/pose",
+                        qos_profile=10
+                    )
+                )
+                ts = message_filters.ApproximateTimeSynchronizer(
+                    self._subscribers,
+                    queue_size = 10,
+                    slop = 9
+                )
+                ts.registerCallback(self._next_step_callback)
             
             # Publishers
             # TODO: 2.4. Create the /odometry (Odometry message) and /scan (LaserScan) publishers.
-            qos_profile = QoSProfile(history=QoSHistoryPolicy.KEEP_LAST,
-                        depth=10,
-                        reliability=QoSReliabilityPolicy.BEST_EFFORT,
-                        durability=QoSDurabilityPolicy.VOLATILE,
-                    )
-            self.odom_publisher = self.create_publisher(Odometry, "/odometry", 10)
-            
-            self.scan_publisher = self.create_publisher(LaserScan, "/scan", qos_profile)
+            qos_profile = QoSProfile(
+                history=QoSHistoryPolicy.KEEP_LAST,
+                depth=10,
+                reliability=QoSReliabilityPolicy.BEST_EFFORT, # Make sure that the robot receives the command to stop
+                durability=QoSDurabilityPolicy.VOLATILE,
+            )
+            self._odometry_publisher = self.create_publisher(Odometry, "/odometry", 10)
+            self._scan_publisher = self.create_publisher(LaserScan, "/scan", qos_profile)
             
             # Attribute and object initializations
-            self._coppeliasim = CoppeliaSim(dt, start, goal_tolerance, ip)
+            self._coppeliasim = CoppeliaSim(dt, start, goal_tolerance)
             self._robot = TurtleBot3Burger(self._coppeliasim.sim, dt)
             self._localized = False
 
