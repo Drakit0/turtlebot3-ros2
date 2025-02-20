@@ -250,6 +250,7 @@ class ParticleFilter:
         if global_localization:
             x_min, y_min, x_max, y_max = self._map.bounds()
             not_contained = np.ones(particle_count, dtype=np.bool_)
+            
             while any(not_contained):
                 particle_to_create_num = np.sum(not_contained)
                 particles[not_contained, 0] = (
@@ -313,8 +314,8 @@ class ParticleFilter:
             float: Gaussian value.
 
         """
-        # TODO: 3.7. Complete the function body (i.e., replace the code below).
-        return 0.0
+        # TODO: 3.7. Complete the function body (i.e., replace the code below)
+        return np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
 
     def _lidar_rays(
         self,
