@@ -1,6 +1,11 @@
 import rclpy
 from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
-from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSHistoryPolicy, QoSReliabilityPolicy
+from rclpy.qos import (
+    QoSProfile,
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSReliabilityPolicy,
+)
 
 import message_filters
 from amr_msgs.msg import PoseStamped
@@ -27,6 +32,7 @@ class CoppeliaSimNode(LifecycleNode):
         self.declare_parameter("goal", (float("inf"), float("inf")))
         self.declare_parameter("goal_tolerance", 0.15)
         self.declare_parameter("start", (0.0, 0.0, 0.0))
+        self.declare_parameter("ip", "")
 
     def on_configure(self, state: LifecycleState) -> TransitionCallbackReturn:
         """Handles a configuring transition.
@@ -35,25 +41,38 @@ class CoppeliaSimNode(LifecycleNode):
             state: Current lifecycle state.
 
         """
-        self.get_logger().info(f"Transitioning from '{state.label}' to 'inactive' state.")
+        self.get_logger().info(
+            f"Transitioning from '{state.label}' to 'inactive' state."
+        )
 
         try:
             # Parameters
             dt = self.get_parameter("dt").get_parameter_value().double_value
             enable_localization = (
-                self.get_parameter("enable_localization").get_parameter_value().bool_value
+                self.get_parameter("enable_localization")
+                .get_parameter_value()
+                .bool_value
             )
             self._goal = tuple(
-                self.get_parameter("goal").get_parameter_value().double_array_value.tolist()
+                self.get_parameter("goal")
+                .get_parameter_value()
+                .double_array_value.tolist()
             )
-            goal_tolerance = self.get_parameter("goal_tolerance").get_parameter_value().double_value
+            goal_tolerance = (
+                self.get_parameter("goal_tolerance").get_parameter_value().double_value
+            )
             start = tuple(
-                self.get_parameter("start").get_parameter_value().double_array_value.tolist()
+                self.get_parameter("start")
+                .get_parameter_value()
+                .double_array_value.tolist()
             )
+            ip = self.get_parameter("ip").get_parameter_value().string_value
 
             # Subscribers
             # TODO: 2.12. Subscribe to /cmd_vel. Connect it with with _next_step_callback.
-            self._cmd_vel_subscription = self.create_subscription(TwistStamped, "/cmd_vel", self._next_step_callback, 10)
+            self._cmd_vel_subscription = self.create_subscription(
+                TwistStamped, "/cmd_vel", self._next_step_callback, 10
+            )
             # TODO: 3.3. Sync the /pose and /cmd_vel subscribers if enable_localization is True.
             if enable_localization:
                 # self._pose_subscription = self.create_subscription(PoseStamped(), "/pose", self._next_step_callback, 10)
@@ -61,40 +80,34 @@ class CoppeliaSimNode(LifecycleNode):
                 # Append as many topics as needed
                 self._subscribers.append(
                     message_filters.Subscriber(
-                        self,
-                        TwistStamped,
-                        "/cmd_vel",
-                        qos_profile=10
+                        self, TwistStamped, "/cmd_vel", qos_profile=10
                     )
                 )
                 self._subscribers.append(
                     message_filters.Subscriber(
-                        self,
-                        PoseStamped,
-                        "/pose",
-                        qos_profile=10
+                        self, PoseStamped, "/pose", qos_profile=10
                     )
                 )
                 ts = message_filters.ApproximateTimeSynchronizer(
-                    self._subscribers,
-                    queue_size = 10,
-                    slop = 9
+                    self._subscribers, queue_size=10, slop=9
                 )
                 ts.registerCallback(self._next_step_callback)
-            
+
             # Publishers
             # TODO: 2.4. Create the /odometry (Odometry message) and /scan (LaserScan) publishers.
             qos_profile = QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
                 depth=10,
-                reliability=QoSReliabilityPolicy.BEST_EFFORT, # Make sure that the robot receives the command to stop
+                reliability=QoSReliabilityPolicy.BEST_EFFORT,  # Make sure that the robot receives the command to stop
                 durability=QoSDurabilityPolicy.VOLATILE,
             )
             self._odometry_publisher = self.create_publisher(Odometry, "/odometry", 10)
-            self._scan_publisher = self.create_publisher(LaserScan, "/scan", qos_profile)
-            
+            self._scan_publisher = self.create_publisher(
+                LaserScan, "/scan", qos_profile
+            )
+
             # Attribute and object initializations
-            self._coppeliasim = CoppeliaSim(dt, start, goal_tolerance)
+            self._coppeliasim = CoppeliaSim(dt, start, goal_tolerance, ip)
             self._robot = TurtleBot3Burger(self._coppeliasim.sim, dt)
             self._localized = False
 
@@ -130,7 +143,9 @@ class CoppeliaSimNode(LifecycleNode):
         except AttributeError:
             pass
 
-    def _next_step_callback(self, cmd_vel_msg: TwistStamped, pose_msg: PoseStamped = PoseStamped()):
+    def _next_step_callback(
+        self, cmd_vel_msg: TwistStamped, pose_msg: PoseStamped = PoseStamped()
+    ):
         """Subscriber callback. Executes a simulation step and publishes the new measurements.
 
         Args:
@@ -144,7 +159,7 @@ class CoppeliaSimNode(LifecycleNode):
         # TODO: 2.13. Parse the velocities from the TwistStamped message (i.e., read v and w).
         v: float = cmd_vel_msg.twist.linear.x
         w: float = cmd_vel_msg.twist.angular.z
-        
+
         # Execute simulation step
         self._robot.move(v, w)
         self._coppeliasim.next_step()
@@ -184,7 +199,9 @@ class CoppeliaSimNode(LifecycleNode):
             th_h %= 2 * math.pi
             th_h_deg = math.degrees(th_h)
 
-            real_pose, position_error, within_tolerance = self._coppeliasim.check_position(x_h, y_h)
+            real_pose, position_error, within_tolerance = (
+                self._coppeliasim.check_position(x_h, y_h)
+            )
             x, y, th = real_pose
             th %= 2 * math.pi
             th_deg = math.degrees(th)
@@ -215,16 +232,22 @@ class CoppeliaSimNode(LifecycleNode):
         goal_found = False
 
         if self._localized:
-            _, _, goal_found = self._coppeliasim.check_position(self._goal[0], self._goal[1])
+            _, _, goal_found = self._coppeliasim.check_position(
+                self._goal[0], self._goal[1]
+            )
 
             if goal_found:
                 self.get_logger().warn("Congratulations, you reached the goal!")
-                execution_time, simulated_time, steps = self._coppeliasim.stop_simulation()
+                execution_time, simulated_time, steps = (
+                    self._coppeliasim.stop_simulation()
+                )
                 self._print_statistics(execution_time, simulated_time, steps)
 
         return goal_found
 
-    def _print_statistics(self, execution_time: float, simulated_time: float, steps: int) -> None:
+    def _print_statistics(
+        self, execution_time: float, simulated_time: float, steps: int
+    ) -> None:
         """Outputs a ROS log message to the Terminal with a summary of timing statistics.
 
         Args:
@@ -254,7 +277,7 @@ class CoppeliaSimNode(LifecycleNode):
         msg.twist.twist.linear.x = z_v
         msg.twist.twist.angular.z = z_w
         self.odom_publisher.publish(msg)
-        
+
     def _publish_scan(self, z_scan: list[float]) -> None:
         """Publishes LiDAR measurements in a sensor_msgs.msg.LaserScan message.
 
@@ -266,7 +289,7 @@ class CoppeliaSimNode(LifecycleNode):
         msg = LaserScan()
         msg.ranges = z_scan
         self.scan_publisher.publish(msg)
-        
+
 
 def main(args=None):
     rclpy.init(args=args)
