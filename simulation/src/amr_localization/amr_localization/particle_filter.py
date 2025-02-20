@@ -250,7 +250,7 @@ class ParticleFilter:
         if global_localization:
             x_min, y_min, x_max, y_max = self._map.bounds()
             not_contained = np.ones(particle_count, dtype=np.bool_)
-            
+
             while any(not_contained):
                 particle_to_create_num = np.sum(not_contained)
                 particles[not_contained, 0] = (
@@ -298,7 +298,17 @@ class ParticleFilter:
         z_hat: list[float] = []
 
         # TODO: 3.6. Complete the missing function body with your code.
-
+        num_rays = 16
+        rays_step = 240 // 16
+        ray_indexes = [r * rays_step for r in range(num_rays)]
+        z_hat = [
+            np.sqrt((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2)
+            for start, end in self._lidar_rays(particle, ray_indexes)
+        ]
+        z_hat = [
+            z if z > self._sensor_range_min and z < self._sensor_range_max else np.nan
+            for z in z_hat
+        ]
         return z_hat
 
     @staticmethod
