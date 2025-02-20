@@ -299,7 +299,7 @@ class ParticleFilter:
 
         # TODO: 3.6. Complete the missing function body with your code.
         num_rays = 16
-        rays_step = 240 // 16
+        rays_step = 240 // num_rays
         ray_indexes = [r * rays_step for r in range(num_rays)]
         z_hat = [
             np.sqrt((start[0] - end[0]) ** 2 + (start[1] - end[1]) ** 2)
@@ -382,5 +382,11 @@ class ParticleFilter:
         probability = 1.0
 
         # TODO: 3.8. Complete the missing function body with your code.
-
+        z_hat = self._sense(particle)
+        
+        for z, z_hat_i in zip(measurements, z_hat):
+            if np.isnan(z_hat_i):
+                z_hat_i = self._sensor_range_min # Maybe something maller
+                
+            probability *= self._gaussian(z_hat_i, self._sigma_z, z)
         return probability
