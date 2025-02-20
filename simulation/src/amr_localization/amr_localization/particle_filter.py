@@ -25,8 +25,16 @@ class ParticleFilter:
         sensor_range_max: float = 8.0,
         sensor_range_min: float = 0.16,
         global_localization: bool = True,
-        initial_pose: tuple[float, float, float] = (float("nan"), float("nan"), float("nan")),
-        initial_pose_sigma: tuple[float, float, float] = (float("nan"), float("nan"), float("nan")),
+        initial_pose: tuple[float, float, float] = (
+            float("nan"),
+            float("nan"),
+            float("nan"),
+        ),
+        initial_pose_sigma: tuple[float, float, float] = (
+            float("nan"),
+            float("nan"),
+            float("nan"),
+        ),
     ):
         """Particle filter class initializer.
 
@@ -65,9 +73,9 @@ class ParticleFilter:
             particle_count, global_localization, initial_pose, initial_pose_sigma
         )
         self._figure, self._axes = plt.subplots(1, 1, figsize=(7, 7))
-        self._timestamp = datetime.datetime.now(pytz.timezone("Europe/Madrid")).strftime(
-            "%Y-%m-%d_%H-%M-%S"
-        )
+        self._timestamp = datetime.datetime.now(
+            pytz.timezone("Europe/Madrid")
+        ).strftime("%Y-%m-%d_%H-%M-%S")
 
     def compute_pose(self) -> tuple[bool, tuple[float, float, float]]:
         """Computes the pose estimate when the particles form a single DBSCAN cluster.
@@ -83,7 +91,7 @@ class ParticleFilter:
         # TODO: 3.10. Complete the missing function body with your code.
         localized: bool = False
         pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
-        
+
         return localized, pose
 
     def move(self, v: float, w: float) -> None:
@@ -98,22 +106,38 @@ class ParticleFilter:
 
         # TODO: 3.5. Complete the function body with your code.
         v_with_noise = v + np.random.normal(0, self._sigma_v, self._particle_count)
-        w_with_noise = w  + np.random.normal(0, self._sigma_w, self._particle_count)
-        rclpy.logging.get_logger("cos").warn(f"{np}")
-        rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array([0.4, 0.0]))}")
-        rclpy.logging.get_logger("cos").warn(f"{type(self._particles[:, 2])}")
-        rclpy.logging.get_logger("cos").warn(f"{self._particles[:, 2]}")
-        rclpy.logging.get_logger("cos").warn(f"{self._particles.shape}")
-        rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array(self._particles[:, 2]))}")
-        x_new = self._particles[:, 0] + v_with_noise * np.cos(self._particles[:, 2]) * self._dt
-        y_new = self._particles[:, 1] + v_with_noise * np.sin(self._particles[:, 2]) * self._dt
+        w_with_noise = w + np.random.normal(0, self._sigma_w, self._particle_count)
+        # rclpy.logging.get_logger("cos").warn(f"{np}")
+        # rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array([0.4, 0.0]))}")
+        # rclpy.logging.get_logger("cos").warn(f"{type(self._particles[:, 2])}")
+        # rclpy.logging.get_logger("cos").warn(f"{self._particles[:, 2]}")
+        # rclpy.logging.get_logger("cos").warn(f"{self._particles.shape}")
+        # rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array(self._particles[:, 2]))}")
+        x_new = (
+            self._particles[:, 0]
+            + v_with_noise
+            * np.array(list(math.cos(x) for x in self._particles[:, 2]))
+            * self._dt
+        )
+        y_new = (
+            self._particles[:, 1]
+            + v_with_noise
+            * np.array(list(math.sin(x) for x in self._particles[:, 2]))
+            * self._dt
+        )
         theta_new = (self._particles[:, 2] + w_with_noise * self._dt) % (2 * np.pi)
+        for i, (x, y) in enumerate(zip(x_new, y_new)):
+            intersection, _ = self._map.check_collision(
+                [(x, y), self._particles[i, :2]]
+            )
+            if intersection:
+                x_new[i] = intersection[0]
+                y_new[i] = intersection[1]
+
         self._particles[:, 0] = x_new
         self._particles[:, 1] = y_new
         self._particles[:, 2] = theta_new
-        
-        self._map.check_collision
-        
+
     def resample(self, measurements: list[float]) -> None:
         """Samples a new set of particles.
 
@@ -123,7 +147,7 @@ class ParticleFilter:
         """
         # TODO: 3.9. Complete the function body with your code (i.e., replace the pass statement).
         pass
-        
+
     def plot(self, axes, orientation: bool = True):
         """Draws particles.
 
@@ -228,21 +252,37 @@ class ParticleFilter:
             not_contained = np.ones(particle_count, dtype=np.bool_)
             while any(not_contained):
                 particle_to_create_num = np.sum(not_contained)
-                particles[not_contained, 0] = np.random.sample(particle_to_create_num)*(x_max - x_min) + x_min
-                particles[not_contained, 1] = np.random.sample(particle_to_create_num)*(y_max - y_min) + y_min
-                particles[not_contained, 2] = np.random.choice([0, np.pi/2, np.pi, 3*np.pi/2], particle_to_create_num)
-                not_contained = np.array(list(map(lambda p: not self._map.contains(p[:2]), particles)))
-            
+                particles[not_contained, 0] = (
+                    np.random.sample(particle_to_create_num) * (x_max - x_min) + x_min
+                )
+                particles[not_contained, 1] = (
+                    np.random.sample(particle_to_create_num) * (y_max - y_min) + y_min
+                )
+                particles[not_contained, 2] = np.random.choice(
+                    [0, np.pi / 2, np.pi, 3 * np.pi / 2], particle_to_create_num
+                )
+                not_contained = np.array(
+                    list(map(lambda p: not self._map.contains(p[:2]), particles))
+                )
+
         else:
             not_contained = np.ones(particle_count, dtype=np.bool_)
-            
+
             while any(not_contained):
                 particle_to_create_num = np.sum(not_contained)
-                particles[:, 0] = np.random.normal(initial_pose[0], initial_pose_sigma[0], particle_to_create_num)
-                particles[:, 1] = np.random.normal(initial_pose[1], initial_pose_sigma[1], particle_to_create_num)
-                particles[:, 2] = np.random.normal(initial_pose[2], initial_pose_sigma[2], particle_to_create_num)
-                not_contained = np.array(list(map(lambda p: not self._map.contains(p[:2]), particles)))
-        
+                particles[:, 0] = np.random.normal(
+                    initial_pose[0], initial_pose_sigma[0], particle_to_create_num
+                )
+                particles[:, 1] = np.random.normal(
+                    initial_pose[1], initial_pose_sigma[1], particle_to_create_num
+                )
+                particles[:, 2] = np.random.normal(
+                    initial_pose[2], initial_pose_sigma[2], particle_to_create_num
+                )
+                not_contained = np.array(
+                    list(map(lambda p: not self._map.contains(p[:2]), particles))
+                )
+
         return particles
 
     def _sense(self, particle: tuple[float, float, float]) -> list[float]:
@@ -257,7 +297,7 @@ class ParticleFilter:
         z_hat: list[float] = []
 
         # TODO: 3.6. Complete the missing function body with your code.
-        
+
         return z_hat
 
     @staticmethod
@@ -275,9 +315,12 @@ class ParticleFilter:
         """
         # TODO: 3.7. Complete the function body (i.e., replace the code below).
         return 0.0
-        
+
     def _lidar_rays(
-        self, pose: tuple[float, float, float], indices: tuple[float], degree_increment: float = 1.5
+        self,
+        pose: tuple[float, float, float],
+        indices: tuple[float],
+        degree_increment: float = 1.5,
     ) -> list[list[tuple[float, float]]]:
         """Determines the simulated LiDAR ray segments for a given robot pose.
 
@@ -328,5 +371,5 @@ class ParticleFilter:
         probability = 1.0
 
         # TODO: 3.8. Complete the missing function body with your code.
-        
+
         return probability
