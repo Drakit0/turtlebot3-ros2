@@ -102,6 +102,7 @@ class ParticleFilter:
         clustering = dbscan.fit(sin_cos_particles)
         localized = (np.unique(clustering.labels_) != -1).sum() == 1
         pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
+        
         if localized:
             particle_idx = np.random.choice(self._particles.shape[0], 100)
             self._particles = self._particles[particle_idx]
@@ -411,8 +412,8 @@ class ParticleFilter:
         # TODO: 3.8. Complete the missing function body with your code.
         z_hat = self._sense(particle)
 
-        num_rays = 8
-        rays_step = 240 // num_rays
+        num_rays = 16
+        rays_step = len(z_hat) // num_rays
         measurements = [measurements[r * rays_step] for r in range(num_rays)]
 
         for z, z_hat_i in zip(measurements, z_hat):
@@ -420,4 +421,5 @@ class ParticleFilter:
                 z_hat_i = self._sensor_range_min  # Maybe something maller
 
             probability *= self._gaussian(z_hat_i, self._sigma_z, z)
+            
         return probability

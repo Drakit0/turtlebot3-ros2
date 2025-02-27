@@ -45,3 +45,5 @@ Thumbs.db
 .devcontainer
 
 *.zip
+
+images/

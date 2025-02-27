@@ -27,7 +27,7 @@ def generate_launch_description():
                 "sigma_v": sigma_v,
                 "sigma_w": sigma_w,
                 "sigma_z": sigma_z,
-                "world": world,
+                "world": world
             }
         ],
     )
@@ -48,7 +48,7 @@ def generate_launch_description():
         namespace="",
         output="screen",
         arguments=["--ros-args", "--log-level", "WARN"],
-        parameters=[{"enable_localization": True, "start": start}],
+        parameters=[{"enable_localization": True, "start": start,"ip":"192.168.56.1"}], # ip = "" if you are going to use docker
     )
 
     lifecycle_manager_node = Node(
