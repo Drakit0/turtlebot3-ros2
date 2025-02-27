@@ -90,7 +90,7 @@ class ParticleFilterNode(LifecycleNode):
 
             # Publishers
             # TODO: 3.1. Create the /pose publisher (PoseStamped message).
-            self._pose_publisher = self.create_publisher(PoseStamped(), "/pose", 10)
+            self._pose_publisher = self.create_publisher(PoseStamped, "/pose", 10)
             
             # Subscribers
             scan_qos_profile = QoSProfile(
@@ -162,7 +162,9 @@ class ParticleFilterNode(LifecycleNode):
 
         if self._localized or not self._steps % self._steps_btw_sense_updates:
             start_time = time.perf_counter()
-            self._particle_filter.resample(z_us)
+            
+            
+            
             sense_time = time.perf_counter() - start_time
 
             self.get_logger().info(f"Sense step time: {sense_time:6.3f} s")

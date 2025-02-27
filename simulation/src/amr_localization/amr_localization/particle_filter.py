@@ -104,7 +104,8 @@ class ParticleFilter:
         pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
         
         if localized:
-            particle_idx = np.random.choice(self._particles.shape[0], 100)
+            self._particle_count = 100
+            particle_idx = np.random.choice(self._particles.shape[0], self._particle_count)
             self._particles = self._particles[particle_idx]
             pose = self._particles.mean(axis=0)
 
@@ -172,6 +173,9 @@ class ParticleFilter:
                 self._particles, weights=similarities, k=self._particle_count
             )
         )
+        # new_particles = self._init_particles(50, True, (.0,.0,.0), (.1,.1,.1))
+        # self._particles = np.concatenate((self._particles, new_particles))
+        # self._particle_count += 50
 
     def plot(self, axes, orientation: bool = True):
         """Draws particles.
@@ -323,7 +327,7 @@ class ParticleFilter:
         z_hat: list[float] = []
 
         # TODO: 3.6. Complete the missing function body with your code.
-        num_rays = 8
+        num_rays = 16
         rays_step = 240 // num_rays
         ray_indexes = [r * rays_step for r in range(num_rays)]
         for ray in self._lidar_rays(particle, ray_indexes):

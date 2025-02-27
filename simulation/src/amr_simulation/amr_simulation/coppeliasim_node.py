@@ -276,7 +276,7 @@ class CoppeliaSimNode(LifecycleNode):
         msg = Odometry()
         msg.twist.twist.linear.x = z_v
         msg.twist.twist.angular.z = z_w
-        self.odom_publisher.publish(msg)
+        self._odometry_publisher.publish(msg)
 
     def _publish_scan(self, z_scan: list[float]) -> None:
         """Publishes LiDAR measurements in a sensor_msgs.msg.LaserScan message.
@@ -288,7 +288,7 @@ class CoppeliaSimNode(LifecycleNode):
         # TODO: 2.6. Complete the function body with your code (i.e., replace the pass statement).
         msg = LaserScan()
         msg.ranges = z_scan
-        self.scan_publisher.publish(msg)
+        self._scan_publisher.publish(msg)
 
 
 def main(args=None):
