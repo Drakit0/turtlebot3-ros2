@@ -22,7 +22,7 @@ class ParticleFilter:
         sigma_v: float = 0.05,
         sigma_w: float = 0.1,
         sigma_z: float = 0.2,
-        sensor_range_max: float = 1.0,  # cambiado de 8.0 a 1.0
+        sensor_range_max: float = 1.0, # cambiado de 8.0 a 1.0
         sensor_range_min: float = 0.16,
         global_localization: bool = True,
         initial_pose: tuple[float, float, float] = (
@@ -66,7 +66,7 @@ class ParticleFilter:
             map_path,
             sensor_range_max,
             compiled_intersect=True,
-            use_regions=True,  # Cambiado de False a True
+            use_regions=True, # Cambiado de False a True
             safety_distance=0.08,
         )
         self._particles = self._init_particles(
@@ -91,20 +91,18 @@ class ParticleFilter:
         # TODO: 3.10. Complete the missing function body with your code.
         localized: bool = False
         dbscan = DBSCAN(0.1, min_samples=10)
-
         self._particles[:, 2] %= 2 * np.pi  # 2*pi = 0
         sin_cos_particles = np.zeros((self._particles.shape[0], 4))
         sin_cos_particles[:, 0] = self._particles[:, 0]
         sin_cos_particles[:, 1] = self._particles[:, 1]
         sin_cos_particles[:, 2] = np.cos(self._particles[:, 2].astype(np.float32))
         sin_cos_particles[:, 3] = np.sin(self._particles[:, 2].astype(np.float32))
-
         clustering = dbscan.fit(sin_cos_particles)
         localized = (np.unique(clustering.labels_) != -1).sum() == 1
         pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
-        
         if localized:
-            particle_idx = np.random.choice(self._particles.shape[0], 100)
+            self._particle_count = 100
+            particle_idx = np.random.choice(self._particles.shape[0], self._particle_count)
             self._particles = self._particles[particle_idx]
             pose = self._particles.mean(axis=0)
 
@@ -131,11 +129,11 @@ class ParticleFilter:
         # rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array(self._particles[:, 2]))}")
         x_new = (
             self._particles[:, 0]
-            + v_with_noise * np.cos(self._particles[:, 2].astype(np.float32)) * self._dt
+            + v_with_noise * np.cos(self._particles[:,2].astype(np.float32)) * self._dt
         )
         y_new = (
             self._particles[:, 1]
-            + v_with_noise * np.sin(self._particles[:, 2].astype(np.float32)) * self._dt
+            + v_with_noise * np.sin(self._particles[:,2].astype(np.float32)) * self._dt
         )
         theta_new = (self._particles[:, 2] + w_with_noise * self._dt) % (2 * np.pi)
         for i, (x, y) in enumerate(zip(x_new, y_new)):
@@ -164,14 +162,18 @@ class ParticleFilter:
                 for particle in self._particles
             ]
         )
-
+        
+        # particle_idx = np.random.multinomial(self._particles.shape[0], similarities, size=self._particle_count)
+        # particle_idx = np.random.choice(
+        #     self._particles.shape[0],
+        #     self._particle_count,
+        #     replace=True,
+        #     p=similarities / similarities.sum(),
+        # )
+        # self._particles = self._particles[particle_idx]
         if similarities.sum() == 0:
             similarities += 1.0
-        self._particles = np.array(
-            random.choices(
-                self._particles, weights=similarities, k=self._particle_count
-            )
-        )
+        self._particles = np.array(random.choices(self._particles, weights = similarities, k = self._particle_count))
 
     def plot(self, axes, orientation: bool = True):
         """Draws particles.
@@ -275,7 +277,6 @@ class ParticleFilter:
         if global_localization:
             x_min, y_min, x_max, y_max = self._map.bounds()
             not_contained = np.ones(particle_count, dtype=np.bool_)
-
             while any(not_contained):
                 particle_to_create_num = np.sum(not_contained)
                 particles[not_contained, 0] = (
@@ -290,10 +291,8 @@ class ParticleFilter:
                 not_contained = np.array(
                     list(map(lambda p: not self._map.contains(p[:2]), particles))
                 )
-
         else:
             not_contained = np.ones(particle_count, dtype=np.bool_)
-
             while any(not_contained):
                 particle_to_create_num = np.sum(not_contained)
                 particles[:, 0] = np.random.normal(
@@ -323,7 +322,7 @@ class ParticleFilter:
         z_hat: list[float] = []
 
         # TODO: 3.6. Complete the missing function body with your code.
-        num_rays = 8
+        num_rays = 16
         rays_step = 240 // num_rays
         ray_indexes = [r * rays_step for r in range(num_rays)]
         for ray in self._lidar_rays(particle, ray_indexes):
@@ -352,8 +351,11 @@ class ParticleFilter:
             float: Gaussian value.
 
         """
-        # TODO: 3.7. Complete the function body (i.e., replace the code below)
+        # TODO: 3.7. Complete the function body (i.e., replace the code below).
         return np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
+        diff = x - mu
+        return np.exp(-0.5 * np.sum(np.square(diff)) / sigma**2)
+        return np.exp(-0.5 * (x - mu) @ (x - mu).T / sigma**2) #/ (sigma * np.sqrt(2 * np.pi))
 
     def _lidar_rays(
         self,
@@ -411,15 +413,43 @@ class ParticleFilter:
 
         # TODO: 3.8. Complete the missing function body with your code.
         z_hat = self._sense(particle)
-
         num_rays = 16
-        rays_step = len(z_hat) // num_rays
-        measurements = [measurements[r * rays_step] for r in range(num_rays)]
-
+        rays_step = 240 // num_rays
+        measurements = [measurements[r*rays_step] for r in range(num_rays)]
         for z, z_hat_i in zip(measurements, z_hat):
             if np.isnan(z_hat_i):
-                z_hat_i = self._sensor_range_min  # Maybe something maller
-
+                z_hat_i = self._sensor_range_min # Maybe something maller
+                
             probability *= self._gaussian(z_hat_i, self._sigma_z, z)
+        return probability
+        particle_measurements = np.array(
+            [m if not np.isnan(m) else self._sensor_range_min for m in self._sense(particle)]
+        )
+        # rclpy.logging.get_logger("ma").warn(f"{len(particle_measurements)}, {len(measurements)}")
+        num_rays = 16
+        rays_step = 240 // num_rays
+        
+        particle_measurements = self._sense(particle)
+        
+        # measurements = [measurements[r*rays_step] for r in range(num_rays)]
+        # probability = self._gaussian(
+        #     np.array([m if not np.isnan(m) else self._sensor_range_min for m in measurements]),
+        #     self._sigma_z,
+        #     particle_measurements,
+        # )
+        
+        real_measurements = [measurements[r*rays_step] for r in range(num_rays)]
+        
+        # Calcular la probabilidad para cada par de mediciones
+        for z_real, z_pred in zip(real_measurements, particle_measurements):
+            # Manejar valores NaN
+            if np.isnan(z_pred):
+                z_pred = self._sensor_range_min
+            if np.isnan(z_real):
+                z_real = self._sensor_range_min
+                
+            # Calcular la probabilidad con una distribución gaussiana clásica
+            prob = np.exp(-0.5 * ((z_real - z_pred) / self._sigma_z)**2)
+            probability *= prob
             
         return probability

@@ -90,7 +90,7 @@ class ParticleFilterNode(LifecycleNode):
 
             # Publishers
             # TODO: 3.1. Create the /pose publisher (PoseStamped message).
-            self._pose_publisher = self.create_publisher(PoseStamped(), "/pose", 10)
+            self._pose_publisher = self.create_publisher(PoseStamped, "/pose", 10)
             
             # Subscribers
             scan_qos_profile = QoSProfile(
@@ -101,9 +101,9 @@ class ParticleFilterNode(LifecycleNode):
             )
 
             self._subscribers: list[message_filters.Subscriber] = []
-            self._subscribers.append(message_filters.Subscriber(self, Odometry, "odometry"))
+            self._subscribers.append(message_filters.Subscriber(self, Odometry, "/odometry"))
             self._subscribers.append(
-                message_filters.Subscriber(self, LaserScan, "scan", qos_profile=scan_qos_profile)
+                message_filters.Subscriber(self, LaserScan, "/scan", qos_profile=scan_qos_profile)
             )
 
             ts = message_filters.ApproximateTimeSynchronizer(
