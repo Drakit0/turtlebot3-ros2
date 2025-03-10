@@ -70,21 +70,17 @@ class CoppeliaSimNode(LifecycleNode):
 
             # Subscribers
             # TODO: 2.12. Subscribe to /cmd_vel. Connect it with with _next_step_callback.
-            if True or not enable_localization:
-                self._cmd_vel_subscription = self.create_subscription(TwistStamped, "/cmd_vel", self._next_step_callback, 10)
-            # TODO: 3.3. Sync the /pose and /cm_vedl subscribers if enable_localization is True.
-            if True:
-                # Usar sincronización de mensajes cuando la localización está habilitada
-                self._subscribers: list[message_filters.Subscriber] = []
-                # Append as many topics as needed
-                self._subscribers.append(
-                    message_filters.Subscriber(
-                        self,
-                        TwistStamped,
-                        "/cmd_vel",
-                        qos_profile=10
-                    )
+            self._subscribers: list[message_filters.Subscriber] = []
+            self._subscribers.append(
+                message_filters.Subscriber(
+                    self, TwistStamped, "/cmd_vel", qos_profile=10
                 )
+            )
+
+            # self._cmd_vel_subscription = self.create_subscription(TwistStamped, "/cmd_vel", self._next_step_callback, 10)
+            # TODO: 3.3. Sync the /pose and /cm_vedl subscribers if enable_localization is True.
+            if enable_localization:
+                # Usar sincronización de mensajes cuando la localización está habilitada
                 self._subscribers.append(
                     message_filters.Subscriber(
                         self,
@@ -93,13 +89,13 @@ class CoppeliaSimNode(LifecycleNode):
                         qos_profile=10
                     )
                 )
-                ts = message_filters.ApproximateTimeSynchronizer(
-                    self._subscribers,
-                    queue_size = 10,
-                    slop = 0.25
-                )
-                ts.registerCallback(self._next_step_callback)
-            
+            ts = message_filters.ApproximateTimeSynchronizer(
+                self._subscribers,
+                queue_size = 10,
+                slop = 9
+            )
+            ts.registerCallback(self._next_step_callback)
+        
             # Publishers
             # TODO: 2.4. Create the /odometry (Odometry message) and /scan (LaserScan) publishers.
             qos_profile = QoSProfile(

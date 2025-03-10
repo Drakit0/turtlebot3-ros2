@@ -204,16 +204,24 @@ class ParticleFilterNode(LifecycleNode):
 
         """
         # TODO: 3.2. Complete the function body with your code (i.e., replace the pass statement).
+        msg = PoseStamped()
+
+        msg.localized = self._localized
+        msg.header.stamp = self.get_clock().now().to_msg() 
+
         if self._localized:
             w, x, y, z = euler2quat(0, 0, theta_h)
-            msg: PoseStamped = PoseStamped()
+            
             msg.pose.position.x = x_h
             msg.pose.position.y = y_h
+            msg.pose.position.z = 0.0
+
             msg.pose.orientation.x = x
             msg.pose.orientation.y = y
             msg.pose.orientation.z = z
             msg.pose.orientation.w = w
-            self._pose_publisher.publish(msg)
+
+        self._pose_publisher.publish(msg)
         
         
 

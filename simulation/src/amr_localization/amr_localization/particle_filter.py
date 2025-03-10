@@ -90,16 +90,20 @@ class ParticleFilter:
         """
         # TODO: 3.10. Complete the missing function body with your code.
         localized: bool = False
+        pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
+        
         dbscan = DBSCAN(0.1, min_samples=10)
+        
         self._particles[:, 2] %= 2 * np.pi  # 2*pi = 0
         sin_cos_particles = np.zeros((self._particles.shape[0], 4))
         sin_cos_particles[:, 0] = self._particles[:, 0]
         sin_cos_particles[:, 1] = self._particles[:, 1]
         sin_cos_particles[:, 2] = np.cos(self._particles[:, 2].astype(np.float32))
         sin_cos_particles[:, 3] = np.sin(self._particles[:, 2].astype(np.float32))
+        
         clustering = dbscan.fit(sin_cos_particles)
-        localized = (np.unique(clustering.labels_) != -1).sum() == 1
-        pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
+        localized = len(np.unique(clustering.labels_) != -1) == 1
+        
         if localized:
             self._particle_count = 100
             particle_idx = np.random.choice(self._particles.shape[0], self._particle_count)
