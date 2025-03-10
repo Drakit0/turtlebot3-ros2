@@ -70,44 +70,49 @@ class CoppeliaSimNode(LifecycleNode):
 
             # Subscribers
             # TODO: 2.12. Subscribe to /cmd_vel. Connect it with with _next_step_callback.
-            self._cmd_vel_subscription = self.create_subscription(
-                TwistStamped, "/cmd_vel", self._next_step_callback, 10
-            )
-            # TODO: 3.3. Sync the /pose and /cmd_vel subscribers if enable_localization is True.
-            if enable_localization:
-                # self._pose_subscription = self.create_subscription(PoseStamped(), "/pose", self._next_step_callback, 10)
+            if True or not enable_localization:
+                self._cmd_vel_subscription = self.create_subscription(TwistStamped, "/cmd_vel", self._next_step_callback, 10)
+            # TODO: 3.3. Sync the /pose and /cm_vedl subscribers if enable_localization is True.
+            if True:
+                # Usar sincronización de mensajes cuando la localización está habilitada
                 self._subscribers: list[message_filters.Subscriber] = []
                 # Append as many topics as needed
                 self._subscribers.append(
                     message_filters.Subscriber(
-                        self, TwistStamped, "/cmd_vel", qos_profile=10
+                        self,
+                        TwistStamped,
+                        "/cmd_vel",
+                        qos_profile=10
                     )
                 )
                 self._subscribers.append(
                     message_filters.Subscriber(
-                        self, PoseStamped, "/pose", qos_profile=10
+                        self,
+                        PoseStamped,
+                        "/pose",
+                        qos_profile=10
                     )
                 )
                 ts = message_filters.ApproximateTimeSynchronizer(
-                    self._subscribers, queue_size=10, slop=9
+                    self._subscribers,
+                    queue_size = 10,
+                    slop = 0.25
                 )
                 ts.registerCallback(self._next_step_callback)
-
+            
             # Publishers
             # TODO: 2.4. Create the /odometry (Odometry message) and /scan (LaserScan) publishers.
             qos_profile = QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
                 depth=10,
-                reliability=QoSReliabilityPolicy.BEST_EFFORT,  # Make sure that the robot receives the command to stop
+                reliability=QoSReliabilityPolicy.BEST_EFFORT, # Make sure that the robot receives the command to stop
                 durability=QoSDurabilityPolicy.VOLATILE,
             )
             self._odometry_publisher = self.create_publisher(Odometry, "/odometry", 10)
-            self._scan_publisher = self.create_publisher(
-                LaserScan, "/scan", qos_profile
-            )
-
+            self._scan_publisher = self.create_publisher(LaserScan, "/scan", qos_profile)
+            
             # Attribute and object initializations
-            self._coppeliasim = CoppeliaSim(dt, start, goal_tolerance, ip)
+            self._coppeliasim = CoppeliaSim(dt, start, goal_tolerance)
             self._robot = TurtleBot3Burger(self._coppeliasim.sim, dt)
             self._localized = False
 
@@ -143,9 +148,7 @@ class CoppeliaSimNode(LifecycleNode):
         except AttributeError:
             pass
 
-    def _next_step_callback(
-        self, cmd_vel_msg: TwistStamped, pose_msg: PoseStamped = PoseStamped()
-    ):
+    def _next_step_callback(self, cmd_vel_msg: TwistStamped, pose_msg: PoseStamped = PoseStamped()):
         """Subscriber callback. Executes a simulation step and publishes the new measurements.
 
         Args:
@@ -155,11 +158,12 @@ class CoppeliaSimNode(LifecycleNode):
         """
         # Check estimated pose
         self._check_estimated_pose(pose_msg)
+        # self.get_logger().warn(f"pose: {pose_msg}")
 
         # TODO: 2.13. Parse the velocities from the TwistStamped message (i.e., read v and w).
         v: float = cmd_vel_msg.twist.linear.x
         w: float = cmd_vel_msg.twist.angular.z
-
+        
         # Execute simulation step
         self._robot.move(v, w)
         self._coppeliasim.next_step()
@@ -199,9 +203,7 @@ class CoppeliaSimNode(LifecycleNode):
             th_h %= 2 * math.pi
             th_h_deg = math.degrees(th_h)
 
-            real_pose, position_error, within_tolerance = (
-                self._coppeliasim.check_position(x_h, y_h)
-            )
+            real_pose, position_error, within_tolerance = self._coppeliasim.check_position(x_h, y_h)
             x, y, th = real_pose
             th %= 2 * math.pi
             th_deg = math.degrees(th)
@@ -232,22 +234,16 @@ class CoppeliaSimNode(LifecycleNode):
         goal_found = False
 
         if self._localized:
-            _, _, goal_found = self._coppeliasim.check_position(
-                self._goal[0], self._goal[1]
-            )
+            _, _, goal_found = self._coppeliasim.check_position(self._goal[0], self._goal[1])
 
             if goal_found:
                 self.get_logger().warn("Congratulations, you reached the goal!")
-                execution_time, simulated_time, steps = (
-                    self._coppeliasim.stop_simulation()
-                )
+                execution_time, simulated_time, steps = self._coppeliasim.stop_simulation()
                 self._print_statistics(execution_time, simulated_time, steps)
 
         return goal_found
 
-    def _print_statistics(
-        self, execution_time: float, simulated_time: float, steps: int
-    ) -> None:
+    def _print_statistics(self, execution_time: float, simulated_time: float, steps: int) -> None:
         """Outputs a ROS log message to the Terminal with a summary of timing statistics.
 
         Args:
@@ -273,11 +269,12 @@ class CoppeliaSimNode(LifecycleNode):
 
         """
         # TODO: 2.5. Complete the function body with your code (i.e., replace the pass statement).
-        msg = Odometry()
-        msg.twist.twist.linear.x = z_v
-        msg.twist.twist.angular.z = z_w
-        self._odometry_publisher.publish(msg)
+        odom_msg = Odometry()
+        odom_msg.twist.twist.linear.x = z_v
+        odom_msg.twist.twist.angular.z = z_w
 
+        self._odometry_publisher.publish(odom_msg)
+        
     def _publish_scan(self, z_scan: list[float]) -> None:
         """Publishes LiDAR measurements in a sensor_msgs.msg.LaserScan message.
 
@@ -286,10 +283,11 @@ class CoppeliaSimNode(LifecycleNode):
 
         """
         # TODO: 2.6. Complete the function body with your code (i.e., replace the pass statement).
-        msg = LaserScan()
-        msg.ranges = z_scan
-        self._scan_publisher.publish(msg)
+        scan_msg = LaserScan()
+        scan_msg.ranges = z_scan
 
+        self._scan_publisher.publish(scan_msg)
+        
 
 def main(args=None):
     rclpy.init(args=args)

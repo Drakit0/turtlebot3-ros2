@@ -101,9 +101,9 @@ class ParticleFilterNode(LifecycleNode):
             )
 
             self._subscribers: list[message_filters.Subscriber] = []
-            self._subscribers.append(message_filters.Subscriber(self, Odometry, "odometry"))
+            self._subscribers.append(message_filters.Subscriber(self, Odometry, "/odometry"))
             self._subscribers.append(
-                message_filters.Subscriber(self, LaserScan, "scan", qos_profile=scan_qos_profile)
+                message_filters.Subscriber(self, LaserScan, "/scan", qos_profile=scan_qos_profile)
             )
 
             ts = message_filters.ApproximateTimeSynchronizer(
@@ -162,9 +162,7 @@ class ParticleFilterNode(LifecycleNode):
 
         if self._localized or not self._steps % self._steps_btw_sense_updates:
             start_time = time.perf_counter()
-            
-            
-            
+            self._particle_filter.resample(z_us)
             sense_time = time.perf_counter() - start_time
 
             self.get_logger().info(f"Sense step time: {sense_time:6.3f} s")
