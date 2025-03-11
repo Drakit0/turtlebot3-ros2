@@ -80,7 +80,6 @@ class CoppeliaSimNode(LifecycleNode):
             # self._cmd_vel_subscription = self.create_subscription(TwistStamped, "/cmd_vel", self._next_step_callback, 10)
             # TODO: 3.3. Sync the /pose and /cm_vedl subscribers if enable_localization is True.
             if enable_localization:
-                # Usar sincronización de mensajes cuando la localización está habilitada
                 self._subscribers.append(
                     message_filters.Subscriber(
                         self,

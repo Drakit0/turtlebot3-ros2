@@ -76,6 +76,8 @@ class ParticleFilter:
         self._timestamp = datetime.datetime.now(
             pytz.timezone("Europe/Madrid")
         ).strftime("%Y-%m-%d_%H-%M-%S")
+        
+        self._num_rays = 8
 
     def compute_pose(self) -> tuple[bool, tuple[float, float, float]]:
         """Computes the pose estimate when the particles form a single DBSCAN cluster.
@@ -92,23 +94,35 @@ class ParticleFilter:
         localized: bool = False
         pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
         
-        dbscan = DBSCAN(0.1, min_samples=10)
+        # Optimize DBSCAN parameters for better performance
+        dbscan = DBSCAN(eps=0.1, min_samples=10, algorithm='kd_tree', n_jobs=-1)
         
-        self._particles[:, 2] %= 2 * np.pi  # 2*pi = 0
-        sin_cos_particles = np.zeros((self._particles.shape[0], 4))
-        sin_cos_particles[:, 0] = self._particles[:, 0]
-        sin_cos_particles[:, 1] = self._particles[:, 1]
-        sin_cos_particles[:, 2] = np.cos(self._particles[:, 2].astype(np.float32))
-        sin_cos_particles[:, 3] = np.sin(self._particles[:, 2].astype(np.float32))
+        # Avoid unnecessary modulo operations by normalizing angles only when needed
+        cos_theta = np.cos(self._particles[:, 2].astype(np.float32))
+        sin_theta = np.sin(self._particles[:, 2].astype(np.float32))
         
-        clustering = dbscan.fit(sin_cos_particles)
-        localized = len(np.unique(clustering.labels_) != -1) == 1
+        # Create features array directly without intermediate steps
+        features = np.column_stack((self._particles[:, 0], self._particles[:, 1], cos_theta, sin_theta))
+        
+        # Perform clustering
+        labels = dbscan.fit_predict(features)
+        
+        # Check if only one cluster (excluding noise points)
+        valid_labels = labels[labels != -1]
+        localized = len(np.unique(valid_labels)) == 1 and len(valid_labels) > 0
         
         if localized:
+            # Reduce particles for tracking mode
             self._particle_count = 100
-            particle_idx = np.random.choice(self._particles.shape[0], self._particle_count)
+            # Use more efficient random sampling
+            particle_idx = np.random.choice(self._particles.shape[0], self._particle_count, replace=False)
             self._particles = self._particles[particle_idx]
-            pose = self._particles.mean(axis=0)
+            # Calculate mean pose directly
+            mean_x = np.mean(self._particles[:, 0])
+            mean_y = np.mean(self._particles[:, 1])
+            # Calculate mean angle properly (average of unit vectors)
+            mean_theta = np.arctan2(np.mean(sin_theta[particle_idx]), np.mean(cos_theta[particle_idx]))
+            pose = (mean_x, mean_y, mean_theta)
 
         return localized, pose
 
@@ -125,12 +139,7 @@ class ParticleFilter:
         # TODO: 3.5. Complete the function body with your code.
         v_with_noise = v + np.random.normal(0, self._sigma_v, self._particle_count)
         w_with_noise = w + np.random.normal(0, self._sigma_w, self._particle_count)
-        # rclpy.logging.get_logger("cos").warn(f"{np}")
-        # rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array([0.4, 0.0]))}")
-        # rclpy.logging.get_logger("cos").warn(f"{type(self._particles[:, 2])}")
-        # rclpy.logging.get_logger("cos").warn(f"{self._particles[:, 2]}")
-        # rclpy.logging.get_logger("cos").warn(f"{self._particles.shape}")
-        # rclpy.logging.get_logger("cos").warn(f"{np.cos(np.array(self._particles[:, 2]))}")
+
         x_new = (
             self._particles[:, 0]
             + v_with_noise * np.cos(self._particles[:,2].astype(np.float32)) * self._dt
@@ -160,6 +169,21 @@ class ParticleFilter:
 
         """
         # TODO: 3.9. Complete the function body with your code (i.e., replace the pass statement).
+        weights = [self._measurement_probability(measurements, particle) for particle in self._particles]
+        weights /= np.sum(weights)
+
+        cumulative_weights = np.cumsum(weights)
+        strata_boundaries = np.linspace(0, 1, self._particle_count + 1)
+
+        resampled_particles = np.zeros_like(self._particles)
+
+        for i in range(self._particle_count):
+            random_sample = np.random.uniform(strata_boundaries[i], strata_boundaries[i + 1])
+            index = np.searchsorted(cumulative_weights, random_sample)
+            resampled_particles[i] = self._particles[index]
+
+        self._particles = resampled_particles
+        return
         similarities = np.array(
             [
                 self._measurement_probability(measurements, particle)
@@ -326,9 +350,8 @@ class ParticleFilter:
         z_hat: list[float] = []
 
         # TODO: 3.6. Complete the missing function body with your code.
-        num_rays = 16
-        rays_step = 240 // num_rays
-        ray_indexes = [r * rays_step for r in range(num_rays)]
+        rays_step = 240 // self._num_rays
+        ray_indexes = [r * rays_step for r in range(self._num_rays)]
         for ray in self._lidar_rays(particle, ray_indexes):
             intersection, distance = self._map.check_collision(ray, True)
             if intersection:
@@ -417,9 +440,9 @@ class ParticleFilter:
 
         # TODO: 3.8. Complete the missing function body with your code.
         z_hat = self._sense(particle)
-        num_rays = 16
-        rays_step = 240 // num_rays
-        measurements = [measurements[r*rays_step] for r in range(num_rays)]
+        
+        rays_step = 240 // self._num_rays
+        measurements = [measurements[r*rays_step] for r in range(self._num_rays)]
         for z, z_hat_i in zip(measurements, z_hat):
             if np.isnan(z_hat_i):
                 z_hat_i = self._sensor_range_min # Maybe something maller

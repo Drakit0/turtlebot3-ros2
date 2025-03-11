@@ -214,7 +214,6 @@ class ParticleFilterNode(LifecycleNode):
             
             msg.pose.position.x = x_h
             msg.pose.position.y = y_h
-            msg.pose.position.z = 0.0
 
             msg.pose.orientation.x = x
             msg.pose.orientation.y = y
