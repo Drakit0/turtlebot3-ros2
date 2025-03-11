@@ -50,7 +50,7 @@ class WallFollower:
             w: Angular velocity command [rad/s].
         """
         # Forward speed
-        v = 0.15
+        v = 0.1
 
         index = -(len(z_scan) // 4)
         measured_distance = z_scan[index]

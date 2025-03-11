@@ -63,12 +63,12 @@ def generate_launch_description():
         package="amr_bringup",
         executable="lifecycle_manager",
         output="screen",
-        arguments=["--ros-args", "--log-level", "WARN"],
+        arguments=["--ros-args", "--log-level", "INFO"],
         parameters=[
             {
                 "node_startup_order": (
-                    "particle_filter",
                     "odometry_node",
+                    "particle_filter",
                     "wall_follower",
                     # "coppeliasim",  # Must be started last
                 )
@@ -78,6 +78,7 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
+            odometry_node,
             particle_filter_node,
             wall_follower_node,
             # coppeliasim_node,

@@ -181,7 +181,10 @@ class ParticleFilter:
                 for particle in self._particles
             ]
         )
-
+        rclpy.logging.get_logger("s").warn(f"{similarities}")
+        similarities = np.array([s if not np.isnan(s) else 0.0 for s in similarities])
+        if np.sum(similarities) == 0:
+            similarities+=1.0
         # particle_idx = np.random.multinomial(self._particles.shape[0], similarities, size=self._particle_count)
         # particle_idx = np.random.choice(
         #     self._particles.shape[0],
@@ -443,7 +446,8 @@ class ParticleFilter:
         for z, z_hat_i in zip(measurements, z_hat):
             if np.isnan(z_hat_i):
                 z_hat_i = self._sensor_range_min  # Maybe something maller
-
+            if np.isnan(z):
+                z = self._sensor_range_min
             probability *= self._gaussian(z_hat_i, self._sigma_z, z)
         return probability
         particle_measurements = np.array(

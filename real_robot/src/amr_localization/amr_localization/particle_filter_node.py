@@ -102,7 +102,8 @@ class ParticleFilterNode(LifecycleNode):
                 initial_pose_sigma=initial_pose_sigma,
             )
             self._last_measurements = []
-            self._num_measurements_for_calculation = 20
+            self._num_measurements_for_calculation = 10
+            self._is_moving = True
 
             if self._enable_plot:
                 self._particle_filter.show("Initialization", save_figure=True)
@@ -132,7 +133,7 @@ class ParticleFilterNode(LifecycleNode):
             )
 
             ts = message_filters.ApproximateTimeSynchronizer(
-                self._subscribers, queue_size=10, slop=9
+                self._subscribers, queue_size=4, slop=0.25
             )
             ts.registerCallback(self._compute_pose_callback)
 
@@ -162,28 +163,32 @@ class ParticleFilterNode(LifecycleNode):
 
         """
         # Parse measurements
-        z_v: float = odom_msg.twist.twist.linear.x
-        z_w: float = odom_msg.twist.twist.angular.z
-        z_scan: list[float] = scan_msg.ranges
+        if self._is_moving:
+            z_v: float = odom_msg.twist.twist.linear.x
+            z_w: float = odom_msg.twist.twist.angular.z
+            z_scan: list[float] = scan_msg.ranges
 
-        self._last_measurements.append((z_v, z_w, z_scan))
+            self._last_measurements.append((z_v, z_w, z_scan))
+            self.get_logger().warn(f"Added one to _last_measuremets: {len(self._last_measurements)}")
+            if len(self._last_measurements) == self._num_measurements_for_calculation:
+                self._is_moving = False
+                move_msg = Move()
+                move_msg.move = False
+                self._move_publisher.publish(move_msg)
+                for i, (z_v, z_w, z_scan) in enumerate(self._last_measurements):
+                    self.get_logger().warn(f"Particle iteration: {i}")
+                    # Execute particle filter
+                    self._execute_motion_step(z_v, z_w)
+                    x_h, y_h, theta_h = self._execute_measurement_step(z_scan)
+                    self._steps += 1
+                self._last_measurements = []
 
-        if len(self._last_measurements) == self._num_measurements_for_calculation:
-
-            move_msg = Move()
-            move_msg.move = False
-            self._move_publisher.publish(move_msg)
-            for z_v, z_w, z_scan in self._last_measurements:
-                # Execute particle filter
-                self._execute_motion_step(z_v, z_w)
-                x_h, y_h, theta_h = self._execute_measurement_step(z_scan)
-                self._steps += 1
-            self._last_measurements = []
-            move_msg.move = True
-            self._move_publisher.publish(move_msg)
-
-            # Publish
-            self._publish_pose_estimate(x_h, y_h, theta_h)
+                # Publish
+                self._publish_pose_estimate(x_h, y_h, theta_h)
+            # move_msg = Move()
+                move_msg.move = True
+                self._move_publisher.publish(move_msg)
+                self._is_moving = True
 
     def _execute_measurement_step(
         self, z_us: list[float]
