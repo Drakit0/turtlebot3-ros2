@@ -1,9 +1,14 @@
 import rclpy
 from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
-from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSHistoryPolicy, QoSReliabilityPolicy
+from rclpy.qos import (
+    QoSProfile,
+    QoSDurabilityPolicy,
+    QoSHistoryPolicy,
+    QoSReliabilityPolicy,
+)
 
 import message_filters
-from amr_msgs.msg import PoseStamped
+from amr_msgs.msg import PoseStamped, Move
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 
@@ -41,29 +46,41 @@ class ParticleFilterNode(LifecycleNode):
             state: Current lifecycle state.
 
         """
-        self.get_logger().info(f"Transitioning from '{state.label}' to 'inactive' state.")
+        self.get_logger().info(
+            f"Transitioning from '{state.label}' to 'inactive' state."
+        )
 
         try:
             # Parameters
             dt = self.get_parameter("dt").get_parameter_value().double_value
-            self._enable_plot = self.get_parameter("enable_plot").get_parameter_value().bool_value
+            self._enable_plot = (
+                self.get_parameter("enable_plot").get_parameter_value().bool_value
+            )
             global_localization = (
-                self.get_parameter("global_localization").get_parameter_value().bool_value
+                self.get_parameter("global_localization")
+                .get_parameter_value()
+                .bool_value
             )
             initial_pose = tuple(
-                self.get_parameter("initial_pose").get_parameter_value().double_array_value.tolist()
+                self.get_parameter("initial_pose")
+                .get_parameter_value()
+                .double_array_value.tolist()
             )
             initial_pose_sigma = tuple(
                 self.get_parameter("initial_pose_sigma")
                 .get_parameter_value()
                 .double_array_value.tolist()
             )
-            particles = self.get_parameter("particles").get_parameter_value().integer_value
+            particles = (
+                self.get_parameter("particles").get_parameter_value().integer_value
+            )
             sigma_v = self.get_parameter("sigma_v").get_parameter_value().double_value
             sigma_w = self.get_parameter("sigma_w").get_parameter_value().double_value
             sigma_z = self.get_parameter("sigma_z").get_parameter_value().double_value
             self._steps_btw_sense_updates = (
-                self.get_parameter("steps_btw_sense_updates").get_parameter_value().integer_value
+                self.get_parameter("steps_btw_sense_updates")
+                .get_parameter_value()
+                .integer_value
             )
             world = self.get_parameter("world").get_parameter_value().string_value
 
@@ -84,6 +101,8 @@ class ParticleFilterNode(LifecycleNode):
                 initial_pose=initial_pose,
                 initial_pose_sigma=initial_pose_sigma,
             )
+            self._last_measurements = []
+            self._num_measurements_for_calculation = 20
 
             if self._enable_plot:
                 self._particle_filter.show("Initialization", save_figure=True)
@@ -91,7 +110,9 @@ class ParticleFilterNode(LifecycleNode):
             # Publishers
             # TODO: 3.1. Create the /pose publisher (PoseStamped message).
             self._pose_publisher = self.create_publisher(PoseStamped, "/pose", 10)
-            
+            # Publisher to tell wall follower to stop
+            self._move_publisher = self.create_publisher(Move, "/move", 10)
+
             # Subscribers
             scan_qos_profile = QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
@@ -101,9 +122,13 @@ class ParticleFilterNode(LifecycleNode):
             )
 
             self._subscribers: list[message_filters.Subscriber] = []
-            self._subscribers.append(message_filters.Subscriber(self, Odometry, "/odometry"))
             self._subscribers.append(
-                message_filters.Subscriber(self, LaserScan, "/scan", qos_profile=scan_qos_profile)
+                message_filters.Subscriber(self, Odometry, "/odometry")
+            )
+            self._subscribers.append(
+                message_filters.Subscriber(
+                    self, LaserScan, "/scan", qos_profile=scan_qos_profile
+                )
             )
 
             ts = message_filters.ApproximateTimeSynchronizer(
@@ -141,15 +166,28 @@ class ParticleFilterNode(LifecycleNode):
         z_w: float = odom_msg.twist.twist.angular.z
         z_scan: list[float] = scan_msg.ranges
 
-        # Execute particle filter
-        self._execute_motion_step(z_v, z_w)
-        x_h, y_h, theta_h = self._execute_measurement_step(z_scan)
-        self._steps += 1
+        self._last_measurements.append((z_v, z_w, z_scan))
 
-        # Publish
-        self._publish_pose_estimate(x_h, y_h, theta_h)
+        if len(self._last_measurements) == self._num_measurements_for_calculation:
 
-    def _execute_measurement_step(self, z_us: list[float]) -> tuple[float, float, float]:
+            move_msg = Move()
+            move_msg.move = False
+            self._move_publisher.publish(move_msg)
+            for z_v, z_w, z_scan in self._last_measurements:
+                # Execute particle filter
+                self._execute_motion_step(z_v, z_w)
+                x_h, y_h, theta_h = self._execute_measurement_step(z_scan)
+                self._steps += 1
+            self._last_measurements = []
+            move_msg.move = True
+            self._move_publisher.publish(move_msg)
+
+            # Publish
+            self._publish_pose_estimate(x_h, y_h, theta_h)
+
+    def _execute_measurement_step(
+        self, z_us: list[float]
+    ) -> tuple[float, float, float]:
         """Executes and monitors the measurement step (sense) of the particle filter.
 
         Args:
@@ -207,11 +245,11 @@ class ParticleFilterNode(LifecycleNode):
         msg = PoseStamped()
 
         msg.localized = self._localized
-        msg.header.stamp = self.get_clock().now().to_msg() 
+        msg.header.stamp = self.get_clock().now().to_msg()
 
         if self._localized:
             w, x, y, z = euler2quat(0, 0, theta_h)
-            
+
             msg.pose.position.x = x_h
             msg.pose.position.y = y_h
 
@@ -221,8 +259,7 @@ class ParticleFilterNode(LifecycleNode):
             msg.pose.orientation.w = w
 
         self._pose_publisher.publish(msg)
-        
-        
+
 
 def main(args=None):
     rclpy.init(args=args)
