@@ -22,7 +22,7 @@ class ParticleFilter:
         sigma_v: float = 0.05,
         sigma_w: float = 0.1,
         sigma_z: float = 0.2,
-        sensor_range_max: float = 1.0,  # cambiado de 8.0 a 1.0
+        sensor_range_max: float = 8.0,  # cambiado de 8.0 a 1.0
         sensor_range_min: float = 0.16,
         global_localization: bool = True,
         initial_pose: tuple[float, float, float] = (
@@ -321,13 +321,13 @@ class ParticleFilter:
             not_contained = np.ones(particle_count, dtype=np.bool_)
             while any(not_contained):
                 particle_to_create_num = np.sum(not_contained)
-                particles[:, 0] = np.random.normal(
+                particles[not_contained, 0] = np.random.normal(
                     initial_pose[0], initial_pose_sigma[0], particle_to_create_num
                 )
-                particles[:, 1] = np.random.normal(
+                particles[not_contained, 1] = np.random.normal(
                     initial_pose[1], initial_pose_sigma[1], particle_to_create_num
                 )
-                particles[:, 2] = np.random.normal(
+                particles[not_contained, 2] = np.random.normal(
                     initial_pose[2], initial_pose_sigma[2], particle_to_create_num
                 )
                 not_contained = np.array(
@@ -378,11 +378,11 @@ class ParticleFilter:
         """
         # TODO: 3.7. Complete the function body (i.e., replace the code below).
         return np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
-        diff = x - mu
-        return np.exp(-0.5 * np.sum(np.square(diff)) / sigma**2)
-        return np.exp(
-            -0.5 * (x - mu) @ (x - mu).T / sigma**2
-        )  # / (sigma * np.sqrt(2 * np.pi))
+        # diff = x - mu
+        # return np.exp(-0.5 * np.sum(np.square(diff)) / sigma**2)
+        # return np.exp(
+        #     -0.5 * (x - mu) @ (x - mu).T / sigma**2
+        # )  # / (sigma * np.sqrt(2 * np.pi))
 
     def _lidar_rays(
         self,

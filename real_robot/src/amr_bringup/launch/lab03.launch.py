@@ -67,8 +67,8 @@ def generate_launch_description():
         parameters=[
             {
                 "node_startup_order": (
-                    "odometry_node",
                     "particle_filter",
+                    "odometry_node",
                     "wall_follower",
                     # "coppeliasim",  # Must be started last
                 )
@@ -78,8 +78,8 @@ def generate_launch_description():
 
     return LaunchDescription(
         [
-            odometry_node,
             particle_filter_node,
+            odometry_node,
             wall_follower_node,
             # coppeliasim_node,
             lifecycle_manager_node,  # Must be launched last

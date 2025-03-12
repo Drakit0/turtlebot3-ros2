@@ -13,6 +13,7 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 
 import math
+import numpy as np
 import os
 import time
 import traceback
@@ -27,7 +28,7 @@ class ParticleFilterNode(LifecycleNode):
         super().__init__("particle_filter")
 
         # Parameters
-        self.declare_parameter("dt", 0.05)
+        self.declare_parameter("dt", 0.1)
         self.declare_parameter("enable_plot", False)
         self.declare_parameter("global_localization", True)
         self.declare_parameter("initial_pose", (0.0, 0.0, math.radians(0)))
@@ -102,8 +103,7 @@ class ParticleFilterNode(LifecycleNode):
                 initial_pose_sigma=initial_pose_sigma,
             )
             self._last_measurements = []
-            self._num_measurements_for_calculation = 10
-            self._is_moving = True
+            self._num_measurements_for_calculation = 20
 
             if self._enable_plot:
                 self._particle_filter.show("Initialization", save_figure=True)
@@ -163,24 +163,28 @@ class ParticleFilterNode(LifecycleNode):
 
         """
         # Parse measurements
-        if self._is_moving:
-            z_v: float = odom_msg.twist.twist.linear.x
-            z_w: float = odom_msg.twist.twist.angular.z
-            z_scan: list[float] = scan_msg.ranges
 
+        z_v: float = odom_msg.twist.twist.linear.x
+        z_w: float = odom_msg.twist.twist.angular.z
+        z_scan: list[float] = scan_msg.ranges
+        # self.get_logger().warn(f"{z_v=}, {z_w=}, {not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001))}")
+        
+        if not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001)):
+            
             self._last_measurements.append((z_v, z_w, z_scan))
-            self.get_logger().warn(f"Added one to _last_measuremets: {len(self._last_measurements)}")
+            # self.get_logger().warn(f"Added one to _last_measuremets: {len(self._last_measurements)}")
+            
             if len(self._last_measurements) == self._num_measurements_for_calculation:
-                self._is_moving = False
+
                 move_msg = Move()
                 move_msg.move = False
                 self._move_publisher.publish(move_msg)
                 for i, (z_v, z_w, z_scan) in enumerate(self._last_measurements):
-                    self.get_logger().warn(f"Particle iteration: {i}")
+                    # self.get_logger().warn(f"Particle iteration: {i}")
                     # Execute particle filter
-                    self._execute_motion_step(z_v, z_w)
-                    x_h, y_h, theta_h = self._execute_measurement_step(z_scan)
                     self._steps += 1
+                    self._execute_motion_step(z_v, z_w)
+                x_h, y_h, theta_h = self._execute_measurement_step(self._last_measurements[-1][2])
                 self._last_measurements = []
 
                 # Publish
@@ -188,7 +192,7 @@ class ParticleFilterNode(LifecycleNode):
             # move_msg = Move()
                 move_msg.move = True
                 self._move_publisher.publish(move_msg)
-                self._is_moving = True
+
 
     def _execute_measurement_step(
         self, z_us: list[float]
@@ -218,6 +222,8 @@ class ParticleFilterNode(LifecycleNode):
             clustering_time = time.perf_counter() - start_time
 
             self.get_logger().info(f"Clustering time: {clustering_time:6.3f} s")
+            if self._localized:
+                self.get_logger().info("Robot localized! ##############################################################")
 
         return pose
 
