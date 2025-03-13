@@ -83,9 +83,59 @@ class PRM:
 
         # TODO: 4.3. Complete the function body (i.e., replace the code below).
         path: list[tuple[float, float]] = []
-
-        return path
         
+        closest_init = None
+        closest_init_dist = np.inf
+        closest_final = None
+        closest_final_dist = np.inf
+        
+        for point in self._graph.keys():
+            init_dist = np.linalg.norm(np.array(point) - np.array(start))
+            final_dist = np.linalg.norm(np.array(point) - np.array(goal))
+            
+            if init_dist < closest_init_dist:
+                closest_init_dist = init_dist
+                closest_init = point
+                
+            
+            if final_dist < closest_final_dist:
+                closest_final_dist = final_dist
+                closest_final = point
+                
+        open_list = {closest_init: (np.linalg.norm(np.array(closest_init) - np.array(closest_final)),0)}
+        
+        if closest_init != start:
+            ancestors[closest_init] = start
+        
+        if closest_final != goal:
+            ancestors[closest_final] = goal
+            
+        closed_list = set()
+        
+        while len(open_list) != 0:
+            
+            node = min(open_list , key=lambda k: open_list.get(k)[0])
+            
+            g = open_list[node][1]
+            del open_list[node]
+            
+            for connected in  self._graph[node]:
+                connected_g = g + np.linalg.norm(np.array(connected) - np.array(node))
+                connected_f = connected_g + np.linalg.norm(np.array(closest_final) - np.array(connected))
+                
+                if connected not in closed_list:
+                    if connected not in open_list.keys() or connected_f < open_list[connected][0]:
+                        open_list[connected] = (connected_f , connected_g)
+                        
+                        ancestors[connected] = node
+                
+            closed_list.add(node)
+                
+            if node == closest_final:
+                return self._reconstruct_path(start, goal, ancestors)
+            
+        raise FileNotFoundError("Path not found.")
+                             
     @staticmethod
     def smooth_path(
         path: list[tuple[float, float]],
@@ -233,6 +283,15 @@ class PRM:
 
         """
         # TODO: 4.2. Complete the missing function body with your code.
+                
+        for i, point_1 in enumerate(graph.keys()):
+            for j, point_2 in enumerate(graph.keys()[i+1:]):
+                
+                dist = np.linalg.norm(np.array(point_1) - np.array(point_2))
+                
+                if dist < connection_distance and self._map.crosses((point_1, point_2)):
+                    graph[point_1].append(point_2)
+                    graph[point_2].append(point_1)
         
         return graph
 
