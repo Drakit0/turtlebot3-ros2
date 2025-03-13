@@ -280,6 +280,26 @@ class PRM:
 
         # TODO: 4.1. Complete the missing function body with your code.
         
+        x_min, y_min, x_max, y_max = self._map.get_bounds()
+        x_range = x_max - x_min
+        y_range = y_max - y_min
+        
+        if use_grid:
+            for x in range(x_range//grid_size):
+                for y in range(y_range//grid_size):
+                    point = (np.round(x*grid_size, 2), np.round(y*grid_size, 2))
+                    
+                    if self._map.contains(point):
+                        graph[point] = []
+                        
+        else:
+            while len(graph) < node_count:
+                point_x = np.round(np.random.uniform(x_min, x_max), 2)
+                point_y = np.round(np.random.uniform(y_min, y_max), 2)
+                
+                if self._map.contains((point_x, point_y)):
+                    graph[point] = []
+        
         return graph
 
     def _reconstruct_path(
