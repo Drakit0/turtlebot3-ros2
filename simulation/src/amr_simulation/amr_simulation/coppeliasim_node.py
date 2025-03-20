@@ -66,7 +66,6 @@ class CoppeliaSimNode(LifecycleNode):
                 .get_parameter_value()
                 .double_array_value.tolist()
             )
-            ip = self.get_parameter("ip").get_parameter_value().string_value
 
             # Subscribers
             # TODO: 2.12. Subscribe to /cmd_vel. Connect it with with _next_step_callback.

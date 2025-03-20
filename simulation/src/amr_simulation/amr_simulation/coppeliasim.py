@@ -21,13 +21,9 @@ class CoppeliaSim:
         self._dt: float = dt
         self._goal_tolerance: float = goal_tolerance
         self._steps: int = 0
-        
-        self._client = None
-        
-        if ip != "":
-            self._client = RemoteAPIClient(ip)
-        else: 
-            self._client = RemoteAPIClient(host=socket.gethostbyname("host.docker.internal"), port=23000)
+                
+
+        self._client = RemoteAPIClient(host=socket.gethostbyname("host.docker.internal"), port=23000)
             
         self._sim = self._client.getObject("sim")
 

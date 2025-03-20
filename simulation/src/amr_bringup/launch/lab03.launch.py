@@ -47,8 +47,8 @@ def generate_launch_description():
         name="coppeliasim",
         namespace="",
         output="screen",
-        arguments=["--ros-args", "--log-level", "WARN"],
-        parameters=[{"enable_localization": True, "start": start,"ip":""}], # ip = "" if you are going to use docker
+        arguments=["--ros-args", "--log-level", "INFO"],
+        parameters=[{"enable_localization": True, "start": start}], # ip = "" if you are going to use docker
     )
 
     lifecycle_manager_node = Node(

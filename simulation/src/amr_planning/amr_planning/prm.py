@@ -158,10 +158,40 @@ class PRM:
         Returns: Smoothed path (initial location first) in (x, y) format.
 
         """
-        # TODO: 4.5. Complete the function body (i.e., load smoothed_path).
-        smoothed_path: list[tuple[float, float]] = []
-        
-        return smoothed_path
+        smoothed_path = []
+
+        # Add intermediate points if required
+        if additional_smoothing_points != 0:
+            for point_1, point_2 in zip(path, path[1:]):
+                smoothed_path.append(point_1)
+                for i in range(additional_smoothing_points):
+                    px = point_1[0] + (i + 1) * (point_2[0] - point_1[0]) / (additional_smoothing_points + 1)
+                    py = point_1[1] + (i + 1) * (point_2[1] - point_1[1]) / (additional_smoothing_points + 1)
+                    smoothed_path.append((px, py))
+            smoothed_path.append(path[-1])
+        else:
+            smoothed_path = path[:]
+
+        # Convert to numpy array for easier manipulation
+        smoothed_path = np.array(smoothed_path)
+        original_path = np.array(smoothed_path)
+
+        # Iterative smoothing
+        change = tolerance
+        while change >= tolerance:
+            change = 0.0
+            
+            for i in range(1, len(smoothed_path) - 1):
+                old_x, old_y = smoothed_path[i]
+                
+                smoothed_path[i][0] += data_weight * (original_path[i][0] - smoothed_path[i][0])
+                smoothed_path[i][0] += smooth_weight * (smoothed_path[i - 1][0] + smoothed_path[i + 1][0] - 2 * smoothed_path[i][0])
+                smoothed_path[i][1] += data_weight * (original_path[i][1] - smoothed_path[i][1])
+                smoothed_path[i][1] += smooth_weight * (smoothed_path[i - 1][1] + smoothed_path[i + 1][1] - 2 * smoothed_path[i][1])
+                
+                change += abs(smoothed_path[i][0] - old_x) + abs(smoothed_path[i][1] - old_y)
+
+        return smoothed_path.tolist()
 
     def plot(
         self,
@@ -378,11 +408,18 @@ class PRM:
         Returns: Path to the goal (start location first) in (x, y) [m] format.
 
         """
-        path: list[tuple[float, float]] = []
+        path: list[tuple[float, float]] = [goal]
 
         # TODO: 4.4. Complete the missing function body with your code.
         
-        return path
+        point = goal
+        
+        while point != start:
+            path.append(ancestors[point])
+            
+            point = ancestors[point]
+        
+        return path[::-1]
 
 
 if __name__ == "__main__":
