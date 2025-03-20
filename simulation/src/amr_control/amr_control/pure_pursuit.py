@@ -89,5 +89,12 @@ class PurePursuit:
         """
         # TODO: 4.10. Complete the function body with your code (i.e., determine target_xy).
         target_xy = (0.0, 0.0)
+        idx = origin_idx
+        while idx < len(self._path):
+            distance = math.dist(origin_xy, self._path[idx])
+            if distance >= self._lookahead_distance:
+                break
+            idx += 1
+        target_xy = self._path[idx]
 
         return target_xy
