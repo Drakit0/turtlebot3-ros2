@@ -331,8 +331,9 @@ class PRM:
         """
         # TODO: 4.2. Complete the missing function body with your code.
 
-        for i, point_1 in enumerate(graph.keys()):
-            for j, point_2 in enumerate(graph.keys()[i + 1 :]):
+        keys = list(graph.keys())
+        for i, point_1 in enumerate(keys):
+            for j, point_2 in enumerate(keys[i + 1 :]):
 
                 dist = np.linalg.norm(np.array(point_1) - np.array(point_2))
 
@@ -386,13 +387,13 @@ class PRM:
 
         # TODO: 4.1. Complete the missing function body with your code.
 
-        x_min, y_min, x_max, y_max = self._map.get_bounds()
+        x_min, y_min, x_max, y_max = self._map.bounds()
         x_range = x_max - x_min
         y_range = y_max - y_min
 
         if use_grid:
-            for x in range(x_range // grid_size):
-                for y in range(y_range // grid_size):
+            for x in range(int(x_range // grid_size)):
+                for y in range(int(y_range // grid_size)):
                     point = (np.round(x * grid_size, 2), np.round(y * grid_size, 2))
 
                     if self._map.contains(point):

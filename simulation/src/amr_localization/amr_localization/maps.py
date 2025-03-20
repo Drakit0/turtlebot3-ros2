@@ -9,6 +9,9 @@ from matplotlib import pyplot as plt
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon, LineString
 
+import rclpy
+import rclpy.logging
+
 
 class Map:
     """Class to perform operations on metric maps."""
@@ -18,7 +21,7 @@ class Map:
         json_file: str,
         sensor_range: float,
         safety_distance: float = 0.0,
-        use_regions: bool = True,
+        use_regions: bool = False,
         compiled_intersect: bool = True,
     ):
         """Map class initializer.
@@ -121,7 +124,11 @@ class Map:
                 yi = ct.c_double(0.0)
                 xp = ct.POINTER(ct.c_double)(xi)
                 yp = ct.POINTER(ct.c_double)(yi)
-
+                rclpy.logging.get_logger("Map").warn(f"map_segments: {map_segments}")
+                rclpy.logging.get_logger("Map").warn(f"_map_segments: {self._map_segments}")
+                rclpy.logging.get_logger("Map").warn(f"region_segments rc: {self._region_segments[r][c]} {r} {c}")
+                rclpy.logging.get_logger("Map").warn(f"region_segments r: {self._region_segments[r]}")
+                rclpy.logging.get_logger("Map").warn(f"region_segments: {self._region_segments}")
                 for map_segment in map_segments:
                     found = self._intersect.segment_intersect(
                         xp,

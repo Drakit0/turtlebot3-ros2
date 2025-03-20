@@ -10,6 +10,8 @@ from amr_localization.maps import Map
 from matplotlib import pyplot as plt
 from sklearn.cluster import DBSCAN
 
+import rclpy.logging
+
 
 class ParticleFilter:
     """Particle filter implementation."""
@@ -150,6 +152,7 @@ class ParticleFilter:
         )
         theta_new = (self._particles[:, 2] + w_with_noise * self._dt) % (2 * np.pi)
         for i, (x, y) in enumerate(zip(x_new, y_new)):
+            rclpy.logging.get_logger("ma2").warn(f"{[(x, y), self._particles[i, :2]]}")
             intersection, _ = self._map.check_collision(
                 [(x, y), self._particles[i, :2]]
             )
@@ -323,13 +326,13 @@ class ParticleFilter:
             not_contained = np.ones(particle_count, dtype=np.bool_)
             while any(not_contained):
                 particle_to_create_num = np.sum(not_contained)
-                particles[:, 0] = np.random.normal(
+                particles[not_contained, 0] = np.random.normal(
                     initial_pose[0], initial_pose_sigma[0], particle_to_create_num
                 )
-                particles[:, 1] = np.random.normal(
+                particles[not_contained, 1] = np.random.normal(
                     initial_pose[1], initial_pose_sigma[1], particle_to_create_num
                 )
-                particles[:, 2] = np.random.normal(
+                particles[not_contained, 2] = np.random.normal(
                     initial_pose[2], initial_pose_sigma[2], particle_to_create_num
                 )
                 not_contained = np.array(
@@ -353,6 +356,7 @@ class ParticleFilter:
         rays_step = 240 // self._num_rays
         ray_indexes = [r * rays_step for r in range(self._num_rays)]
         for ray in self._lidar_rays(particle, ray_indexes):
+            rclpy.logging.get_logger("ma").warn(f"{ray}")
             intersection, distance = self._map.check_collision(ray, True)
             if intersection:
                 z_hat.append(distance)
