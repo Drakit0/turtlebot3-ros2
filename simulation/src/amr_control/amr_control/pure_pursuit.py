@@ -1,3 +1,6 @@
+import math
+
+
 class PurePursuit:
     """Class to follow a path using a simple pure pursuit controller."""
 
@@ -29,7 +32,7 @@ class PurePursuit:
         # TODO: 4.11. Complete the function body with your code (i.e., compute v and w).
         v = 0.0
         w = 0.0
-        
+
         return v, w
 
     @property
@@ -42,7 +45,9 @@ class PurePursuit:
         """Path setter."""
         self._path = value
 
-    def _find_closest_point(self, x: float, y: float) -> tuple[tuple[float, float], int]:
+    def _find_closest_point(
+        self, x: float, y: float
+    ) -> tuple[tuple[float, float], int]:
         """Find the closest path point to the current robot pose.
 
         Args:
@@ -58,8 +63,17 @@ class PurePursuit:
         closest_xy = (0.0, 0.0)
         closest_idx = 0
 
+        min_distance = float("inf")
+
+        for idx, path_point in enumerate(self._path):
+            distance = math.dist((x, y), path_point)
+            if distance < min_distance:
+                min_distance = distance
+                closest_xy = path_point
+                closest_idx = idx
+
         return closest_xy, closest_idx
-        
+
     def _find_target_point(
         self, origin_xy: tuple[float, float], origin_idx: int
     ) -> tuple[float, float]:
@@ -77,4 +91,3 @@ class PurePursuit:
         target_xy = (0.0, 0.0)
 
         return target_xy
-        
