@@ -33,6 +33,19 @@ class PurePursuit:
         v = 0.0
         w = 0.0
 
+        if not self._path:
+            return v, w
+
+        beta = math.atan2(self._path[0][1] - y, self._path[0][0] - x)
+        alpha = beta - theta
+
+        if abs(alpha) > math.pi / 4:
+            w = math.copysign(1, alpha)
+            return v, w
+
+        v = 1.0
+        w = 2 * v * math.sin(alpha) / self._lookahead_distance
+
         return v, w
 
     @property
