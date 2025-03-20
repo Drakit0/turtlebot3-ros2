@@ -1,8 +1,10 @@
 from launch import LaunchDescription
+
 # import socket
 from launch_ros.actions import LifecycleNode, Node
 
 import math
+
 
 def generate_launch_description():
     start = (1.0, -1.0, 0.5 * math.pi)  # Outer corridor
@@ -24,7 +26,9 @@ def generate_launch_description():
         namespace="",
         output="screen",
         arguments=["--ros-args", "--log-level", "WARN"],
-        parameters=[{"start": start, "ip": "172.18.32.1"}], # ip = "" if you are going to use docker
+        parameters=[
+            {"start": start, "ip": "172.18.32.1"}
+        ],  # ip = "" if you are going to use docker
     )
 
     lifecycle_manager_node = Node(
@@ -49,20 +53,19 @@ def generate_launch_description():
             lifecycle_manager_node,  # Must be launched last
         ]
     )
-    
-    
+
+
 # def read_ip() -> str :
 #     st = socket.socket(socket.AF_INET , socket.SOCK_DGRAM )
-    
+
 #     try:
 #         st.connect(("10.255.255.255", 1)) # No importa la dirección
 #         ip = st.getsockname()[0]
-        
+
 #     except Exception : # Si está en local
 #         ip = "127.0.0.1"
-        
+
 #     finally :
 #         st.close() # Cerramos el socket
-        
-#     return ip
 
+#     return ip

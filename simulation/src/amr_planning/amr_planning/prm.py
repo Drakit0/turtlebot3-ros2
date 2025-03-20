@@ -47,17 +47,19 @@ class PRM:
             use_regions=False,
         )
 
-        self._graph: dict[tuple[float, float], list[tuple[float, float]]] = self._create_graph(
-            use_grid,
-            node_count,
-            grid_size,
-            connection_distance,
+        self._graph: dict[tuple[float, float], list[tuple[float, float]]] = (
+            self._create_graph(
+                use_grid,
+                node_count,
+                grid_size,
+                connection_distance,
+            )
         )
 
         self._figure, self._axes = plt.subplots(1, 1, figsize=(7, 7))
-        self._timestamp = datetime.datetime.now(pytz.timezone("Europe/Madrid")).strftime(
-            "%Y-%m-%d_%H-%M-%S"
-        )
+        self._timestamp = datetime.datetime.now(
+            pytz.timezone("Europe/Madrid")
+        ).strftime("%Y-%m-%d_%H-%M-%S")
 
     def find_path(
         self, start: tuple[float, float], goal: tuple[float, float]
@@ -79,63 +81,74 @@ class PRM:
         if not self._map.contains(goal):
             raise ValueError("Goal location is outside the environment.")
 
-        ancestors: dict[tuple[float, float], tuple[float, float]] = {}  # {(x, y: (x_prev, y_prev)}
+        ancestors: dict[tuple[float, float], tuple[float, float]] = (
+            {}
+        )  # {(x, y: (x_prev, y_prev)}
 
         # TODO: 4.3. Complete the function body (i.e., replace the code below).
         path: list[tuple[float, float]] = []
-        
+
         closest_init = None
         closest_init_dist = np.inf
         closest_final = None
         closest_final_dist = np.inf
-        
+
         for point in self._graph.keys():
             init_dist = np.linalg.norm(np.array(point) - np.array(start))
             final_dist = np.linalg.norm(np.array(point) - np.array(goal))
-            
+
             if init_dist < closest_init_dist:
                 closest_init_dist = init_dist
                 closest_init = point
-                
-            
+
             if final_dist < closest_final_dist:
                 closest_final_dist = final_dist
                 closest_final = point
-                
-        open_list = {closest_init: (np.linalg.norm(np.array(closest_init) - np.array(closest_final)),0)}
-        
+
+        open_list = {
+            closest_init: (
+                np.linalg.norm(np.array(closest_init) - np.array(closest_final)),
+                0,
+            )
+        }
+
         if closest_init != start:
             ancestors[closest_init] = start
-        
+
         if closest_final != goal:
             ancestors[closest_final] = goal
-            
+
         closed_list = set()
-        
+
         while len(open_list) != 0:
-            
-            node = min(open_list , key=lambda k: open_list.get(k)[0])
-            
+
+            node = min(open_list, key=lambda k: open_list.get(k)[0])
+
             g = open_list[node][1]
             del open_list[node]
-            
-            for connected in  self._graph[node]:
+
+            for connected in self._graph[node]:
                 connected_g = g + np.linalg.norm(np.array(connected) - np.array(node))
-                connected_f = connected_g + np.linalg.norm(np.array(closest_final) - np.array(connected))
-                
+                connected_f = connected_g + np.linalg.norm(
+                    np.array(closest_final) - np.array(connected)
+                )
+
                 if connected not in closed_list:
-                    if connected not in open_list.keys() or connected_f < open_list[connected][0]:
-                        open_list[connected] = (connected_f , connected_g)
-                        
+                    if (
+                        connected not in open_list.keys()
+                        or connected_f < open_list[connected][0]
+                    ):
+                        open_list[connected] = (connected_f, connected_g)
+
                         ancestors[connected] = node
-                
+
             closed_list.add(node)
-                
+
             if node == closest_final:
                 return self._reconstruct_path(start, goal, ancestors)
-            
+
         raise FileNotFoundError("Path not found.")
-                             
+
     @staticmethod
     def smooth_path(
         path: list[tuple[float, float]],
@@ -228,7 +241,9 @@ class PRM:
             y_val = [x[1] for x in path]
 
             axes.plot(x_val, y_val)  # Plot the path
-            axes.plot(x_val[1:-1], y_val[1:-1], "bo", markersize=4)  # Draw nodes as blue circles
+            axes.plot(
+                x_val[1:-1], y_val[1:-1], "bo", markersize=4
+            )  # Draw nodes as blue circles
 
         # Plot the smoothed path
         if smoothed_path:
@@ -236,7 +251,9 @@ class PRM:
             y_val = [x[1] for x in smoothed_path]
 
             axes.plot(x_val, y_val, "y")  # Plot the path
-            axes.plot(x_val[1:-1], y_val[1:-1], "yo", markersize=2)  # Draw nodes as yellow circles
+            axes.plot(
+                x_val[1:-1], y_val[1:-1], "yo", markersize=2
+            )  # Draw nodes as yellow circles
 
         if path or smoothed_path:
             axes.plot(
@@ -313,16 +330,16 @@ class PRM:
 
         """
         # TODO: 4.2. Complete the missing function body with your code.
-                
+
         for i, point_1 in enumerate(graph.keys()):
-            for j, point_2 in enumerate(graph.keys()[i+1:]):
-                
+            for j, point_2 in enumerate(graph.keys()[i + 1 :]):
+
                 dist = np.linalg.norm(np.array(point_1) - np.array(point_2))
-                
+
                 if dist < connection_distance and self._map.crosses((point_1, point_2)):
                     graph[point_1].append(point_2)
                     graph[point_2].append(point_1)
-        
+
         return graph
 
     def _create_graph(
@@ -368,27 +385,27 @@ class PRM:
         graph: dict[tuple[float, float], list[tuple[float, float]]] = {}
 
         # TODO: 4.1. Complete the missing function body with your code.
-        
+
         x_min, y_min, x_max, y_max = self._map.get_bounds()
         x_range = x_max - x_min
         y_range = y_max - y_min
-        
+
         if use_grid:
-            for x in range(x_range//grid_size):
-                for y in range(y_range//grid_size):
-                    point = (np.round(x*grid_size, 2), np.round(y*grid_size, 2))
-                    
+            for x in range(x_range // grid_size):
+                for y in range(y_range // grid_size):
+                    point = (np.round(x * grid_size, 2), np.round(y * grid_size, 2))
+
                     if self._map.contains(point):
                         graph[point] = []
-                        
+
         else:
             while len(graph) < node_count:
                 point_x = np.round(np.random.uniform(x_min, x_max), 2)
                 point_y = np.round(np.random.uniform(y_min, y_max), 2)
-                
+
                 if self._map.contains((point_x, point_y)):
                     graph[point] = []
-        
+
         return graph
 
     def _reconstruct_path(
@@ -411,14 +428,14 @@ class PRM:
         path: list[tuple[float, float]] = [goal]
 
         # TODO: 4.4. Complete the missing function body with your code.
-        
-        point = goal
-        
-        while point != start:
-            path.append(ancestors[point])
-            
-            point = ancestors[point]
-        
+
+        node = goal
+        path.append(node)
+
+        while node != start:
+            node = ancestors[node]
+            path.append(node)
+
         return path[::-1]
 
 
@@ -430,7 +447,9 @@ if __name__ == "__main__":
 
     # Create the roadmap
     start_time = time.perf_counter()
-    prm = PRM(map_path, use_grid=True, node_count=250, grid_size=0.1, connection_distance=0.15)
+    prm = PRM(
+        map_path, use_grid=True, node_count=250, grid_size=0.1, connection_distance=0.15
+    )
     roadmap_creation_time = time.perf_counter() - start_time
 
     print(f"Roadmap creation time: {roadmap_creation_time:1.3f} s")

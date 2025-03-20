@@ -37,21 +37,35 @@ class PRMNode(LifecycleNode):
             state: Current lifecycle state.
 
         """
-        self.get_logger().info(f"Transitioning from '{state.label}' to 'inactive' state.")
+        self.get_logger().info(
+            f"Transitioning from '{state.label}' to 'inactive' state."
+        )
 
         try:
             # Parameters
             connection_distance = (
-                self.get_parameter("connection_distance").get_parameter_value().double_value
+                self.get_parameter("connection_distance")
+                .get_parameter_value()
+                .double_value
             )
-            self._enable_plot = self.get_parameter("enable_plot").get_parameter_value().bool_value
+            self._enable_plot = (
+                self.get_parameter("enable_plot").get_parameter_value().bool_value
+            )
             self._goal = tuple(
-                self.get_parameter("goal").get_parameter_value().double_array_value.tolist()
+                self.get_parameter("goal")
+                .get_parameter_value()
+                .double_array_value.tolist()
             )
-            grid_size = self.get_parameter("grid_size").get_parameter_value().double_value
-            node_count = self.get_parameter("node_count").get_parameter_value().integer_value
+            grid_size = (
+                self.get_parameter("grid_size").get_parameter_value().double_value
+            )
+            node_count = (
+                self.get_parameter("node_count").get_parameter_value().integer_value
+            )
             obstacle_safety_distance = (
-                self.get_parameter("obstacle_safety_distance").get_parameter_value().double_value
+                self.get_parameter("obstacle_safety_distance")
+                .get_parameter_value()
+                .double_value
             )
             self._smoothing_additional_points = (
                 self.get_parameter("smoothing_additional_points")
@@ -59,10 +73,14 @@ class PRMNode(LifecycleNode):
                 .integer_value
             )
             self._smoothing_data_weight = (
-                self.get_parameter("smoothing_data_weight").get_parameter_value().double_value
+                self.get_parameter("smoothing_data_weight")
+                .get_parameter_value()
+                .double_value
             )
             self._smoothing_smooth_weight = (
-                self.get_parameter("smoothing_smooth_weight").get_parameter_value().double_value
+                self.get_parameter("smoothing_smooth_weight")
+                .get_parameter_value()
+                .double_value
             )
             use_grid = self.get_parameter("use_grid").get_parameter_value().bool_value
             world = self.get_parameter("world").get_parameter_value().string_value
@@ -84,11 +102,14 @@ class PRMNode(LifecycleNode):
             )
             roadmap_creation_time = time.perf_counter() - start_time
 
-            self.get_logger().info(f"Roadmap creation time: {roadmap_creation_time:1.3f} s")
+            self.get_logger().info(
+                f"Roadmap creation time: {roadmap_creation_time:1.3f} s"
+            )
 
             # Publishers
             # TODO: 4.6. Create the /path publisher (Path message).
-            
+            self._path_publisher = self.create_publisher(Path, "path", 10)
+
             # Subscribers
             self._subscriber_pose = self.create_subscription(
                 AmrPoseStamped, "pose", self._path_callback, 10
@@ -139,7 +160,9 @@ class PRMNode(LifecycleNode):
             self.get_logger().info(f"Smoothing time: {smoothing_time:1.3f} s")
 
             if self._enable_plot:
-                self._planning.show(path=path, smoothed_path=smoothed_path, save_figure=True)
+                self._planning.show(
+                    path=path, smoothed_path=smoothed_path, save_figure=True
+                )
 
             self._publish_path(smoothed_path)
 
@@ -153,8 +176,18 @@ class PRMNode(LifecycleNode):
 
         """
         # TODO: 4.7. Complete the function body with your code (i.e., replace the pass statement).
-        pass
-        
+        path_msg = Path()
+        path_msg.header.stamp = self.get_clock().now().to_msg()
+
+        for point in path:
+            path_point = PoseStamped()
+            path_point.pose.position.x = point[0]
+            path_point.pose.position.y = point[1]
+
+            path_msg.poses.append(path_point)
+
+        self._path_publisher.publish(path_msg)
+
 
 def main(args=None):
     rclpy.init(args=args)

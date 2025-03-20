@@ -27,7 +27,7 @@ def generate_launch_description():
                 "sigma_v": sigma_v,
                 "sigma_w": sigma_w,
                 "sigma_z": sigma_z,
-                "world": world
+                "world": world,
             }
         ],
     )
