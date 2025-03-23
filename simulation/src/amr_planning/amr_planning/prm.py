@@ -337,7 +337,7 @@ class PRM:
 
                 dist = np.linalg.norm(np.array(point_1) - np.array(point_2))
 
-                if dist < connection_distance and self._map.crosses((point_1, point_2)):
+                if dist < connection_distance and not self._map.crosses((point_1, point_2)):
                     graph[point_1].append(point_2)
                     graph[point_2].append(point_1)
 
@@ -392,9 +392,9 @@ class PRM:
         y_range = y_max - y_min
 
         if use_grid:
-            for x in range(int(x_range // grid_size)):
-                for y in range(int(y_range // grid_size)):
-                    point = (np.round(x * grid_size, 2), np.round(y * grid_size, 2))
+            for x in range(int(x_range // grid_size) + 1):
+                for y in range(int(y_range // grid_size) + 1):
+                    point = (np.round(x_min + x * grid_size, 2), np.round(y_min + y * grid_size, 2))
 
                     if self._map.contains(point):
                         graph[point] = []
