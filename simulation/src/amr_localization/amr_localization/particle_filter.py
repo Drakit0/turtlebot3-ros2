@@ -115,7 +115,7 @@ class ParticleFilter:
         
         if localized:
             # Reduce particles for tracking mode
-            self._particle_count = 100
+            self._particle_count = 50
             # Use more efficient random sampling
             particle_idx = np.random.choice(self._particles.shape[0], self._particle_count, replace=False)
             self._particles = self._particles[particle_idx]
@@ -152,13 +152,13 @@ class ParticleFilter:
         )
         theta_new = (self._particles[:, 2] + w_with_noise * self._dt) % (2 * np.pi)
         for i, (x, y) in enumerate(zip(x_new, y_new)):
-            rclpy.logging.get_logger("ma2").warn(f"{[(x, y), self._particles[i, :2]]}")
-            intersection, _ = self._map.check_collision(
-                [(x, y), self._particles[i, :2]]
-            )
-            if intersection:
-                x_new[i] = intersection[0]
-                y_new[i] = intersection[1]
+            if all((x, y) != self._particles[i, :2]):
+                intersection, _ = self._map.check_collision(
+                    [(x, y), self._particles[i, :2]]
+                )
+                if intersection:
+                    x_new[i] = intersection[0]
+                    y_new[i] = intersection[1]
 
         self._particles[:, 0] = x_new
         self._particles[:, 1] = y_new
@@ -356,7 +356,6 @@ class ParticleFilter:
         rays_step = 240 // self._num_rays
         ray_indexes = [r * rays_step for r in range(self._num_rays)]
         for ray in self._lidar_rays(particle, ray_indexes):
-            rclpy.logging.get_logger("ma").warn(f"{ray}")
             intersection, distance = self._map.check_collision(ray, True)
             if intersection:
                 z_hat.append(distance)

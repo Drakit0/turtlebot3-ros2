@@ -124,27 +124,34 @@ class Map:
                 yi = ct.c_double(0.0)
                 xp = ct.POINTER(ct.c_double)(xi)
                 yp = ct.POINTER(ct.c_double)(yi)
-                rclpy.logging.get_logger("Map").warn(f"map_segments: {map_segments}")
-                rclpy.logging.get_logger("Map").warn(f"_map_segments: {self._map_segments}")
-                rclpy.logging.get_logger("Map").warn(f"region_segments rc: {self._region_segments[r][c]} {r} {c}")
-                rclpy.logging.get_logger("Map").warn(f"region_segments r: {self._region_segments[r]}")
-                rclpy.logging.get_logger("Map").warn(f"region_segments: {self._region_segments}")
-                for map_segment in map_segments:
-                    found = self._intersect.segment_intersect(
-                        xp,
-                        yp,
-                        segment[0][0],
-                        segment[0][1],
-                        segment[1][0],
-                        segment[1][1],
-                        map_segment[0][0],
-                        map_segment[0][1],
-                        map_segment[1][0],
-                        map_segment[1][1],
-                    )
+                # rclpy.logging.get_logger("Map").warn(f"map_segments: {map_segments}")
+                # rclpy.logging.get_logger("Map").warn(f"_map_segments: {self._map_segments}")
+                # rclpy.logging.get_logger("Map").warn(f"region_segments rc: {self._region_segments[r][c]} {r} {c}")
+                # rclpy.logging.get_logger("Map").warn(f"region_segments r: {self._region_segments[r]}")
+                # rclpy.logging.get_logger("Map").warn(f"region_segments: {self._region_segments}")
+                # if not isinstance(map_segments, list):
+                #     rclpy.logging.get_logger("Map").warn(f"map_segments: {map_segments}")
+                #     intersections.append(segment[0])
+                # else:
+                try:
+                    for map_segment in map_segments:
+                        found = self._intersect.segment_intersect(
+                            xp,
+                            yp,
+                            segment[0][0],
+                            segment[0][1],
+                            segment[1][0],
+                            segment[1][1],
+                            map_segment[0][0],
+                            map_segment[0][1],
+                            map_segment[1][0],
+                            map_segment[1][1],
+                        )
 
-                    if found:
-                        intersections.append((xi.value, yi.value))
+                        if found:
+                            intersections.append((xi.value, yi.value))
+                except:
+                    pass
             else:
                 from amr_localization.intersect import Intersect
 

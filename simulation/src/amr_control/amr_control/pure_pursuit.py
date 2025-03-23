@@ -1,5 +1,7 @@
 import math
 
+import rclpy
+
 
 class PurePursuit:
     """Class to follow a path using a simple pure pursuit controller."""
@@ -32,12 +34,19 @@ class PurePursuit:
         # TODO: 4.11. Complete the function body with your code (i.e., compute v and w).
         v = 0.0
         w = 0.0
+        
+        
 
         if not self._path:
             return v, w
+        
+        _, closest_idx = self._find_closest_point(x, y)
+        target_point = self._find_target_point((x, y), closest_idx)
 
-        beta = math.atan2(self._path[0][1] - y, self._path[0][0] - x)
+        beta = math.atan2(target_point[1] - y, target_point[0] - x)
         alpha = beta - theta
+        
+        rclpy.logging.get_logger("pure_pursuit").warn(f"closest_idx: {closest_idx}")
 
         if abs(alpha) > math.pi / 4:
             w = math.copysign(1, alpha)
@@ -80,7 +89,7 @@ class PurePursuit:
 
         for idx, path_point in enumerate(self._path):
             distance = math.dist((x, y), path_point)
-            if distance < min_distance:
+            if distance <= min_distance:
                 min_distance = distance
                 closest_xy = path_point
                 closest_idx = idx
