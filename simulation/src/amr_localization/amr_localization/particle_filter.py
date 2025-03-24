@@ -24,7 +24,7 @@ class ParticleFilter:
         sigma_v: float = 0.05,
         sigma_w: float = 0.1,
         sigma_z: float = 0.2,
-        sensor_range_max: float = 1.0, # cambiado de 8.0 a 1.0
+        sensor_range_max: float = 1.0,  # cambiado de 8.0 a 1.0
         sensor_range_min: float = 0.16,
         global_localization: bool = True,
         initial_pose: tuple[float, float, float] = (
@@ -63,12 +63,13 @@ class ParticleFilter:
         self._sigma_w: float = sigma_w
         self._sigma_z: float = sigma_z
         self._iteration: int = 0
+        self._initial_pose_sigma: tuple[float, float, float] = initial_pose_sigma
 
         self._map = Map(
             map_path,
             sensor_range_max,
             compiled_intersect=True,
-            use_regions=True, # Cambiado de False a True
+            use_regions=True,  # Cambiado de False a True
             safety_distance=0.08,
         )
         self._particles = self._init_particles(
@@ -78,7 +79,7 @@ class ParticleFilter:
         self._timestamp = datetime.datetime.now(
             pytz.timezone("Europe/Madrid")
         ).strftime("%Y-%m-%d_%H-%M-%S")
-        
+
         self._num_rays = 8
 
     def compute_pose(self) -> tuple[bool, tuple[float, float, float]]:
@@ -95,25 +96,38 @@ class ParticleFilter:
         # TODO: 3.10. Complete the missing function body with your code.
         localized: bool = False
         pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
-        
+
         # Optimize DBSCAN parameters for better performance
-        dbscan = DBSCAN(eps=0.1, min_samples=10, algorithm='kd_tree', n_jobs=-1)
-        
+        dbscan = DBSCAN(eps=0.1, min_samples=10, algorithm="kd_tree", n_jobs=-1)
+
         # Avoid unnecessary modulo operations by normalizing angles only when needed
         cos_theta = np.cos(self._particles[:, 2].astype(np.float32))
         sin_theta = np.sin(self._particles[:, 2].astype(np.float32))
-        
+
         # Create features array directly without intermediate steps
-        features = np.column_stack((self._particles[:, 0], self._particles[:, 1], cos_theta, sin_theta))
-        
+        features = np.column_stack(
+            (self._particles[:, 0], self._particles[:, 1], cos_theta, sin_theta)
+        )
+
         # Perform clustering
         labels = dbscan.fit_predict(features)
-        
+
         # Check if only one cluster (excluding noise points)
         valid_labels = labels[labels != -1]
         localized = len(np.unique(valid_labels)) == 1 and len(valid_labels) > 0
-        
+
         if localized:
+            # # Reduce particles for tracking mode
+            # self._particle_count = 50
+            # # Calculate mean pose directly
+            # mean_x = np.mean(self._particles[:, 0])
+            # mean_y = np.mean(self._particles[:, 1])
+            # mean_theta = np.mean(self._particles[:, 2])
+
+            # pose = (mean_x, mean_y, mean_theta)
+            # self._particles = self._init_particles(
+            #     self._particle_count, False, pose, (0.1, 0.1, math.radians(5))
+            # )
             # Reduce particles for tracking mode
             self._particle_count = 50
             # Use more efficient random sampling
@@ -144,11 +158,11 @@ class ParticleFilter:
 
         x_new = (
             self._particles[:, 0]
-            + v_with_noise * np.cos(self._particles[:,2].astype(np.float32)) * self._dt
+            + v_with_noise * np.cos(self._particles[:, 2].astype(np.float32)) * self._dt
         )
         y_new = (
             self._particles[:, 1]
-            + v_with_noise * np.sin(self._particles[:,2].astype(np.float32)) * self._dt
+            + v_with_noise * np.sin(self._particles[:, 2].astype(np.float32)) * self._dt
         )
         theta_new = (self._particles[:, 2] + w_with_noise * self._dt) % (2 * np.pi)
         for i, (x, y) in enumerate(zip(x_new, y_new)):
@@ -172,7 +186,10 @@ class ParticleFilter:
 
         """
         # TODO: 3.9. Complete the function body with your code (i.e., replace the pass statement).
-        weights = [self._measurement_probability(measurements, particle) for particle in self._particles]
+        weights = [
+            self._measurement_probability(measurements, particle)
+            for particle in self._particles
+        ]
         weights /= np.sum(weights)
 
         cumulative_weights = np.cumsum(weights)
@@ -181,7 +198,9 @@ class ParticleFilter:
         resampled_particles = np.zeros_like(self._particles)
 
         for i in range(self._particle_count):
-            random_sample = np.random.uniform(strata_boundaries[i], strata_boundaries[i + 1])
+            random_sample = np.random.uniform(
+                strata_boundaries[i], strata_boundaries[i + 1]
+            )
             index = np.searchsorted(cumulative_weights, random_sample)
             resampled_particles[i] = self._particles[index]
 
@@ -193,7 +212,7 @@ class ParticleFilter:
                 for particle in self._particles
             ]
         )
-        
+
         # particle_idx = np.random.multinomial(self._particles.shape[0], similarities, size=self._particle_count)
         # particle_idx = np.random.choice(
         #     self._particles.shape[0],
@@ -204,7 +223,11 @@ class ParticleFilter:
         # self._particles = self._particles[particle_idx]
         if similarities.sum() == 0:
             similarities += 1.0
-        self._particles = np.array(random.choices(self._particles, weights = similarities, k = self._particle_count))
+        self._particles = np.array(
+            random.choices(
+                self._particles, weights=similarities, k=self._particle_count
+            )
+        )
 
     def plot(self, axes, orientation: bool = True):
         """Draws particles.
@@ -385,7 +408,9 @@ class ParticleFilter:
         return np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
         diff = x - mu
         return np.exp(-0.5 * np.sum(np.square(diff)) / sigma**2)
-        return np.exp(-0.5 * (x - mu) @ (x - mu).T / sigma**2) #/ (sigma * np.sqrt(2 * np.pi))
+        return np.exp(
+            -0.5 * (x - mu) @ (x - mu).T / sigma**2
+        )  # / (sigma * np.sqrt(2 * np.pi))
 
     def _lidar_rays(
         self,
@@ -443,33 +468,36 @@ class ParticleFilter:
 
         # TODO: 3.8. Complete the missing function body with your code.
         z_hat = self._sense(particle)
-        
+
         rays_step = 240 // self._num_rays
-        measurements = [measurements[r*rays_step] for r in range(self._num_rays)]
+        measurements = [measurements[r * rays_step] for r in range(self._num_rays)]
         for z, z_hat_i in zip(measurements, z_hat):
             if np.isnan(z_hat_i):
-                z_hat_i = self._sensor_range_min # Maybe something maller
-                
+                z_hat_i = self._sensor_range_min  # Maybe something maller
+
             probability *= self._gaussian(z_hat_i, self._sigma_z, z)
         return probability
         particle_measurements = np.array(
-            [m if not np.isnan(m) else self._sensor_range_min for m in self._sense(particle)]
+            [
+                m if not np.isnan(m) else self._sensor_range_min
+                for m in self._sense(particle)
+            ]
         )
         # rclpy.logging.get_logger("ma").warn(f"{len(particle_measurements)}, {len(measurements)}")
         num_rays = 16
         rays_step = 240 // num_rays
-        
+
         particle_measurements = self._sense(particle)
-        
+
         # measurements = [measurements[r*rays_step] for r in range(num_rays)]
         # probability = self._gaussian(
         #     np.array([m if not np.isnan(m) else self._sensor_range_min for m in measurements]),
         #     self._sigma_z,
         #     particle_measurements,
         # )
-        
-        real_measurements = [measurements[r*rays_step] for r in range(num_rays)]
-        
+
+        real_measurements = [measurements[r * rays_step] for r in range(num_rays)]
+
         # Calcular la probabilidad para cada par de mediciones
         for z_real, z_pred in zip(real_measurements, particle_measurements):
             # Manejar valores NaN
@@ -477,9 +505,9 @@ class ParticleFilter:
                 z_pred = self._sensor_range_min
             if np.isnan(z_real):
                 z_real = self._sensor_range_min
-                
+
             # Calcular la probabilidad con una distribución gaussiana clásica
-            prob = np.exp(-0.5 * ((z_real - z_pred) / self._sigma_z)**2)
+            prob = np.exp(-0.5 * ((z_real - z_pred) / self._sigma_z) ** 2)
             probability *= prob
-            
+
         return probability

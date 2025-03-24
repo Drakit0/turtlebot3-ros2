@@ -34,25 +34,23 @@ class PurePursuit:
         # TODO: 4.11. Complete the function body with your code (i.e., compute v and w).
         v = 0.0
         w = 0.0
-        
-        
 
         if not self._path:
             return v, w
-        
+
         _, closest_idx = self._find_closest_point(x, y)
         target_point = self._find_target_point((x, y), closest_idx)
 
         beta = math.atan2(target_point[1] - y, target_point[0] - x)
         alpha = beta - theta
-        
+
         rclpy.logging.get_logger("pure_pursuit").warn(f"closest_idx: {closest_idx}")
 
-        if abs(alpha) > math.pi / 4:
+        if abs(alpha) > math.pi / 4 and not abs(alpha) > 7 * math.pi / 4:
             w = math.copysign(1, alpha)
             return v, w
 
-        v = 1.0
+        v = 0.15
         w = 2 * v * math.sin(alpha) / self._lookahead_distance
 
         return v, w
@@ -112,7 +110,7 @@ class PurePursuit:
         # TODO: 4.10. Complete the function body with your code (i.e., determine target_xy).
         target_xy = (0.0, 0.0)
         idx = origin_idx
-        while idx < len(self._path):
+        while idx < len(self._path) - 1:
             distance = math.dist(origin_xy, self._path[idx])
             if distance >= self._lookahead_distance:
                 break
