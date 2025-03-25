@@ -179,8 +179,9 @@ class ParticleFilterNode(LifecycleNode):
                 move_msg = Move()
                 move_msg.move = False
                 self._move_publisher.publish(move_msg)
+                self.get_logger().warn(f"Stopping the robot")
+                
                 for i, (z_v, z_w, z_scan) in enumerate(self._last_measurements):
-                    # self.get_logger().warn(f"Particle iteration: {i}")
                     # Execute particle filter
                     self._steps += 1
                     self._execute_motion_step(z_v, z_w)

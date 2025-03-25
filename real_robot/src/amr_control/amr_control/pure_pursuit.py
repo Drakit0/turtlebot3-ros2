@@ -50,7 +50,7 @@ class PurePursuit:
             w = math.copysign(1, alpha)
             return v, w
 
-        v = 0.15
+        v = 0.1
         w = 2 * v * math.sin(alpha) / self._lookahead_distance
 
         return v, w

@@ -122,22 +122,27 @@ class Map:
                 xp = ct.POINTER(ct.c_double)(xi)
                 yp = ct.POINTER(ct.c_double)(yi)
 
-                for map_segment in map_segments:
-                    found = self._intersect.segment_intersect(
-                        xp,
-                        yp,
-                        segment[0][0],
-                        segment[0][1],
-                        segment[1][0],
-                        segment[1][1],
-                        map_segment[0][0],
-                        map_segment[0][1],
-                        map_segment[1][0],
-                        map_segment[1][1],
-                    )
+                try:
+                    for map_segment in map_segments:
+                        found = self._intersect.segment_intersect(
+                            xp,
+                            yp,
+                            segment[0][0],
+                            segment[0][1],
+                            segment[1][0],
+                            segment[1][1],
+                            map_segment[0][0],
+                            map_segment[0][1],
+                            map_segment[1][0],
+                            map_segment[1][1],
+                        )
 
-                    if found:
-                        intersections.append((xi.value, yi.value))
+                        if found:
+                            intersections.append((xi.value, yi.value))
+                            
+                except:
+                    pass
+                
             else:
                 from amr_localization.intersect import Intersect
 
@@ -470,7 +475,7 @@ class Map:
 
 if __name__ == "__main__":
     # Display the full map and its regions
-    map_name = "lab03"
+    map_name = "project"
     map_path = os.path.realpath(
         os.path.join(os.path.dirname(__file__), "..", "maps", map_name + ".json")
     )

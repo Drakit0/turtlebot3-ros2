@@ -55,7 +55,7 @@ def generate_launch_description():
                 "obstacle_safety_distance": 0.12,  # 0.08,
                 "smoothing_additional_points": 3,
                 "smoothing_data_weight": 0.1,
-                "smoothing_smooth_weight": 0.1,
+                "smoothing_smooth_weight": 0.25,
                 "use_grid": True,
                 "world": world,
             }
@@ -69,7 +69,7 @@ def generate_launch_description():
         namespace="",
         output="screen",
         arguments=["--ros-args", "--log-level", "WARN"],
-        parameters=[{"lookahead_distance": 0.3}],
+        parameters=[{"lookahead_distance": 0.15}],
     )
 
     # coppeliasim_node = LifecycleNode(

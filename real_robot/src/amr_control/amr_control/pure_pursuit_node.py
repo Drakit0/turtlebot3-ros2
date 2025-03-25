@@ -2,7 +2,7 @@ import rclpy
 from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
 
 from amr_msgs.msg import PoseStamped
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import Twist
 from nav_msgs.msg import Path
 
 import math
@@ -50,7 +50,8 @@ class PurePursuitNode(LifecycleNode):
             )
 
             # Publishers
-            self._publisher = self.create_publisher(TwistStamped, "cmd_vel", 10)
+            # self._publisher = self.create_publisher(Twist, "cmd_vel", 10)
+            self._publisher = self.create_publisher(Twist, "cmd_vel", 10)
 
             # Attribute and object initializations
             self._pure_pursuit = PurePursuit(dt, lookahead_distance)
@@ -116,17 +117,17 @@ class PurePursuitNode(LifecycleNode):
         self._pure_pursuit.path = path
 
     def _publish_velocity_commands(self, v: float, w: float) -> None:
-        """Publishes velocity commands in a geometry_msgs.msg.TwistStamped message.
+        """Publishes velocity commands in a geometry_msgs.msg.Twist message.
 
         Args:
             v: Linear velocity command [m/s].
             w: Angular velocity command [rad/s].
 
         """
-        msg = TwistStamped()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.twist.linear.x = v
-        msg.twist.angular.z = w
+        msg = Twist()
+        # msg.header.stamp = self.get_clock().now().to_msg()
+        msg.linear.x = v
+        msg.angular.z = -w
         self._publisher.publish(msg)
 
 

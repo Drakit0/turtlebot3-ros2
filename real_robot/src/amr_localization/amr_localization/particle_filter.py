@@ -181,7 +181,7 @@ class ParticleFilter:
                 for particle in self._particles
             ]
         )
-        rclpy.logging.get_logger("s").warn(f"{similarities}")
+        # rclpy.logging.get_logger("s").warn(f"{similarities}")
         similarities = np.array([s if not np.isnan(s) else 0.0 for s in similarities])
         if np.sum(similarities) == 0:
             similarities += 1.0
@@ -450,37 +450,37 @@ class ParticleFilter:
                 z = self._sensor_range_min
             probability *= self._gaussian(z_hat_i, self._sigma_z, z)
         return probability
-        particle_measurements = np.array(
-            [
-                m if not np.isnan(m) else self._sensor_range_min
-                for m in self._sense(particle)
-            ]
-        )
-        # rclpy.logging.get_logger("ma").warn(f"{len(particle_measurements)}, {len(measurements)}")
-        num_rays = 16
-        rays_step = 240 // num_rays
-
-        particle_measurements = self._sense(particle)
-
-        # measurements = [measurements[r*rays_step] for r in range(num_rays)]
-        # probability = self._gaussian(
-        #     np.array([m if not np.isnan(m) else self._sensor_range_min for m in measurements]),
-        #     self._sigma_z,
-        #     particle_measurements,
+        # particle_measurements = np.array(
+        #     [
+        #         m if not np.isnan(m) else self._sensor_range_min
+        #         for m in self._sense(particle)
+        #     ]
         # )
+        # # rclpy.logging.get_logger("ma").warn(f"{len(particle_measurements)}, {len(measurements)}")
+        # num_rays = 16
+        # rays_step = 240 // num_rays
 
-        real_measurements = [measurements[r * rays_step] for r in range(num_rays)]
+        # particle_measurements = self._sense(particle)
 
-        # Calcular la probabilidad para cada par de mediciones
-        for z_real, z_pred in zip(real_measurements, particle_measurements):
-            # Manejar valores NaN
-            if np.isnan(z_pred):
-                z_pred = self._sensor_range_min
-            if np.isnan(z_real):
-                z_real = self._sensor_range_min
+        # # measurements = [measurements[r*rays_step] for r in range(num_rays)]
+        # # probability = self._gaussian(
+        # #     np.array([m if not np.isnan(m) else self._sensor_range_min for m in measurements]),
+        # #     self._sigma_z,
+        # #     particle_measurements,
+        # # )
 
-            # Calcular la probabilidad con una distribución gaussiana clásica
-            prob = np.exp(-0.5 * ((z_real - z_pred) / self._sigma_z) ** 2)
-            probability *= prob
+        # real_measurements = [measurements[r * rays_step] for r in range(num_rays)]
 
-        return probability
+        # # Calcular la probabilidad para cada par de mediciones
+        # for z_real, z_pred in zip(real_measurements, particle_measurements):
+        #     # Manejar valores NaN
+        #     if np.isnan(z_pred):
+        #         z_pred = self._sensor_range_min
+        #     if np.isnan(z_real):
+        #         z_real = self._sensor_range_min
+
+        #     # Calcular la probabilidad con una distribución gaussiana clásica
+        #     prob = np.exp(-0.5 * ((z_real - z_pred) / self._sigma_z) ** 2)
+        #     probability *= prob
+
+        # return probability

@@ -81,7 +81,7 @@ class WallFollowerNode(LifecycleNode):
             # TODO: 4.12. Add /pose to the synced subscriptions only if localization is enabled.
 
             # Publishers
-            # TODO: 2.10. Create the /cmd_vel velocity commands publisher (TwistStamped message).
+            # TODO: 2.10. Create the /cmd_vel velocity commands publisher (Twist message).
             self._cmd_vel_publisher = self.create_publisher(Twist, "/cmd_vel", 10)
             # Attribute and object initializations
             self._wall_follower = WallFollower(dt)
@@ -139,7 +139,7 @@ class WallFollowerNode(LifecycleNode):
             self._publish_velocity_commands(v, w)
 
     def _publish_velocity_commands(self, v: float, w: float) -> None:
-        """Publishes velocity commands in a geometry_msgs.msg.TwistStamped message.
+        """Publishes velocity commands in a geometry_msgs.msg.Twist message.
 
         Args:
             v: Linear velocity command [m/s].
