@@ -168,12 +168,12 @@ class ParticleFilterNode(LifecycleNode):
         z_w: float = odom_msg.twist.twist.angular.z
         z_scan: list[float] = scan_msg.ranges
         # self.get_logger().warn(f"{z_v=}, {z_w=}, {not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001))}")
-        
+
         if not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001)):
-            
+
             self._last_measurements.append((z_v, z_w, z_scan))
             # self.get_logger().warn(f"Added one to _last_measuremets: {len(self._last_measurements)}")
-            
+
             if len(self._last_measurements) == self._num_measurements_for_calculation:
 
                 move_msg = Move()
@@ -184,15 +184,16 @@ class ParticleFilterNode(LifecycleNode):
                     # Execute particle filter
                     self._steps += 1
                     self._execute_motion_step(z_v, z_w)
-                x_h, y_h, theta_h = self._execute_measurement_step(self._last_measurements[-1][2])
+                x_h, y_h, theta_h = self._execute_measurement_step(
+                    self._last_measurements[-1][2]
+                )
                 self._last_measurements = []
 
                 # Publish
                 self._publish_pose_estimate(x_h, y_h, theta_h)
-            # move_msg = Move()
+                # move_msg = Move()
                 move_msg.move = True
                 self._move_publisher.publish(move_msg)
-
 
     def _execute_measurement_step(
         self, z_us: list[float]
@@ -223,7 +224,8 @@ class ParticleFilterNode(LifecycleNode):
 
             self.get_logger().info(f"Clustering time: {clustering_time:6.3f} s")
             if self._localized:
-                self.get_logger().info("Robot localized! ##############################################################")
+                # Cuando se localiza seguir la pose en cada paso
+                self._num_measurements_for_calculation = 1
 
         return pose
 

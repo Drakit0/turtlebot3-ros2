@@ -115,7 +115,7 @@ class ParticleFilter:
 
         if localized:
             # Reduce particles for tracking mode
-            self._particle_count = 100
+            self._particle_count = 50
             # Use more efficient random sampling
             particle_idx = np.random.choice(
                 self._particles.shape[0], self._particle_count, replace=False
@@ -184,7 +184,7 @@ class ParticleFilter:
         rclpy.logging.get_logger("s").warn(f"{similarities}")
         similarities = np.array([s if not np.isnan(s) else 0.0 for s in similarities])
         if np.sum(similarities) == 0:
-            similarities+=1.0
+            similarities += 1.0
         # particle_idx = np.random.multinomial(self._particles.shape[0], similarities, size=self._particle_count)
         # particle_idx = np.random.choice(
         #     self._particles.shape[0],
