@@ -2,6 +2,8 @@ import rclpy
 from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
 
 from amr_msgs.msg import PoseStamped
+# from amr_msgs.msg import PoseStamped, Move
+
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Path
 
@@ -53,6 +55,10 @@ class PurePursuitNode(LifecycleNode):
             # self._publisher = self.create_publisher(Twist, "cmd_vel", 10)
             self._publisher = self.create_publisher(Twist, "cmd_vel", 10)
 
+             # Subscriber to /move in order to stop when particle filter tells so
+            # self._move_subscriber = self.create_subscription(Move, "/move", self._move_callback, 10)
+            # self.move = True
+            
             # Attribute and object initializations
             self._pure_pursuit = PurePursuit(dt, lookahead_distance)
 
@@ -61,6 +67,9 @@ class PurePursuitNode(LifecycleNode):
             return TransitionCallbackReturn.ERROR
 
         return super().on_configure(state)
+    
+    def _move_callback(self, move_msg):
+         self.move = move_msg.move
 
     def on_activate(self, state: LifecycleState) -> TransitionCallbackReturn:
         """Handles an activating transition.
@@ -96,6 +105,23 @@ class PurePursuitNode(LifecycleNode):
             # Execute pure pursuit
             v, w = self._pure_pursuit.compute_commands(x, y, theta)
             self.get_logger().info(f"Commands: v = {v:.3f} m/s, w = {w:+.3f} rad/s")
+
+        # if not self.move:
+        #         v, w = 0.0, 0.0
+        # else:
+        #     # Parse pose
+        #     x = pose_msg.pose.position.x
+        #     y = pose_msg.pose.position.y
+        #     quat_w = pose_msg.pose.orientation.w
+        #     quat_x = pose_msg.pose.orientation.x
+        #     quat_y = pose_msg.pose.orientation.y
+        #     quat_z = pose_msg.pose.orientation.z
+        #     _, _, theta = quat2euler((quat_w, quat_x, quat_y, quat_z))
+        #     theta %= 2 * math.pi
+
+        #     # Execute pure pursuit
+        #     v, w = self._pure_pursuit.compute_commands(x, y, theta)
+        #     self.get_logger().info(f"Commands: v = {v:.3f} m/s, w = {w:+.3f} rad/s")
 
             # Publish
             self._publish_velocity_commands(v, w)
