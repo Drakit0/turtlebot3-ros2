@@ -69,7 +69,7 @@ class PurePursuitNode(LifecycleNode):
         return super().on_configure(state)
     
     def _move_callback(self, move_msg):
-         self.move = move_msg.move
+        self.move = move_msg.move
 
     def on_activate(self, state: LifecycleState) -> TransitionCallbackReturn:
         """Handles an activating transition.
