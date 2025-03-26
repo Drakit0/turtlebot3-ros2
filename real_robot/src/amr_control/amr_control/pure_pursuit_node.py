@@ -1,8 +1,8 @@
 import rclpy
 from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
 
-from amr_msgs.msg import PoseStamped
-# from amr_msgs.msg import PoseStamped, Move
+# from amr_msgs.msg import PoseStamped
+from amr_msgs.msg import PoseStamped#, Move
 
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Path
@@ -107,7 +107,7 @@ class PurePursuitNode(LifecycleNode):
             self.get_logger().info(f"Commands: v = {v:.3f} m/s, w = {w:+.3f} rad/s")
 
         # if not self.move:
-        #         v, w = 0.0, 0.0
+        #     v, w = 0.0, 0.0
         # else:
         #     # Parse pose
         #     x = pose_msg.pose.position.x
@@ -123,8 +123,8 @@ class PurePursuitNode(LifecycleNode):
         #     v, w = self._pure_pursuit.compute_commands(x, y, theta)
         #     self.get_logger().info(f"Commands: v = {v:.3f} m/s, w = {w:+.3f} rad/s")
 
-            # Publish
-            self._publish_velocity_commands(v, w)
+        # Publish
+        self._publish_velocity_commands(v, w)
 
     def _path_callback(self, path_msg: Path):
         """Subscriber callback. Saves the path the pure pursuit controller has to follow.
