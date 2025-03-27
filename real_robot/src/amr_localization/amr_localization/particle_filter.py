@@ -440,8 +440,7 @@ class ParticleFilter:
 
         # TODO: 3.8. Complete the missing function body with your code.
         z_hat = self._sense(particle)
-
-        rays_step = 240 // self._num_rays
+        rays_step = len(measurements) // self._num_rays
         measurements = [measurements[r * rays_step] for r in range(self._num_rays)]
         for z, z_hat_i in zip(measurements, z_hat):
             if np.isnan(z_hat_i):
