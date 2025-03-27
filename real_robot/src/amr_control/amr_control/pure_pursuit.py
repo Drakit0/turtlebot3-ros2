@@ -38,13 +38,19 @@ class PurePursuit:
         if not self._path:
             return v, w
 
+        
         _, closest_idx = self._find_closest_point(x, y)
+        
+        if closest_idx == len(self._path) - 1 and math.dist(self._path[-1], (x, y)) < 0.05:
+            # Robot is close to the last point of the path
+            rclpy.logging.get_logger("pure_pursuit").warn("Reached the end of the path")
+            return 0.0, 0.0
+        
         target_point = self._find_target_point((x, y), closest_idx)
 
         beta = math.atan2(target_point[1] - y, target_point[0] - x)
         alpha = beta - theta
 
-        rclpy.logging.get_logger("pure_pursuit").warn(f"closest_idx: {closest_idx}")
 
         if abs(alpha) > math.pi / 4 and not abs(alpha) > 7 * math.pi / 4:
             w = math.copysign(1, alpha)
