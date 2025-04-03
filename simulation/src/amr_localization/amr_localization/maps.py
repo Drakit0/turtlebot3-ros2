@@ -484,7 +484,7 @@ class Map:
 
 if __name__ == "__main__":
     # Display the full map and its regions
-    map_name = "lab03"
+    map_name = "project"
     map_path = os.path.realpath(
         os.path.join(os.path.dirname(__file__), "..", "maps", map_name + ".json")
     )

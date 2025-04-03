@@ -45,14 +45,29 @@ def generate_launch_description():
         namespace="",
         output="screen",
         arguments=["--ros-args", "--log-level", "INFO"],
+        # parameters=[
+        #     {
+        #         "connection_distance": 0.15,  # 0.3,
+        #         "enable_plot": True,
+        #         "goal": goal,
+        #         "grid_size": 0.1,
+        #         "node_count": 250,
+        #         "obstacle_safety_distance": 0.12,  # 0.08,
+        #         "smoothing_additional_points": 3,
+        #         "smoothing_data_weight": 0.1,
+        #         "smoothing_smooth_weight": 0.1,
+        #         "use_grid": True,
+        #         "world": world,
+        #     }
+        # ],
         parameters=[
             {
-                "connection_distance": 0.15,  # 0.3,
+                "connection_distance": 0.15,
                 "enable_plot": True,
                 "goal": goal,
                 "grid_size": 0.1,
                 "node_count": 250,
-                "obstacle_safety_distance": 0.12,  # 0.08,
+                "obstacle_safety_distance": 0.12,
                 "smoothing_additional_points": 3,
                 "smoothing_data_weight": 0.1,
                 "smoothing_smooth_weight": 0.1,
