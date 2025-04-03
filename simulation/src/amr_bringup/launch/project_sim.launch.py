@@ -39,7 +39,7 @@ def generate_launch_description():
         parameters=[
             {
                 "connection_distance": 0.15,
-                "enable_plot": False,
+                "enable_plot": True,
                 "goal": goal,
                 "grid_size": 0.1,
                 "node_count": 250,
