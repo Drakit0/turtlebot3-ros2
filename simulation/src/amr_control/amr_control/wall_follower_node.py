@@ -70,7 +70,7 @@ class WallFollowerNode(LifecycleNode):
             if enable_localization:
                 self._subscribers.append(
                     message_filters.Subscriber(
-                        self, PoseStamped, "/pose", qos_profile=qos_profile
+                        self, PoseStamped, "/pose", qos_profile=10
                     )
                 )
 
