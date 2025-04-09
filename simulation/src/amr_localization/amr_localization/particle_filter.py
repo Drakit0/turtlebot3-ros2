@@ -96,6 +96,11 @@ class ParticleFilter:
         # TODO: 3.10. Complete the missing function body with your code.
         localized: bool = False
         pose: tuple[float, float, float] = (float("inf"), float("inf"), float("inf"))
+        covariance: tuple[float, float, float] = (
+            float("inf"),
+            float("inf"),
+            float("inf"),
+        )
 
         # Optimize DBSCAN parameters for better performance
         dbscan = DBSCAN(eps=0.1, min_samples=10, algorithm="kd_tree", n_jobs=-1)
@@ -131,16 +136,27 @@ class ParticleFilter:
             # Reduce particles for tracking mode
             self._particle_count = 50
             # Use more efficient random sampling
-            particle_idx = np.random.choice(self._particles.shape[0], self._particle_count, replace=False)
+            particle_idx = np.random.choice(
+                self._particles.shape[0], self._particle_count, replace=False
+            )
             self._particles = self._particles[particle_idx]
             # Calculate mean pose directly
             mean_x = np.mean(self._particles[:, 0])
             mean_y = np.mean(self._particles[:, 1])
             # Calculate mean angle properly (average of unit vectors)
-            mean_theta = np.arctan2(np.mean(sin_theta[particle_idx]), np.mean(cos_theta[particle_idx]))
+            mean_theta = np.arctan2(
+                np.mean(sin_theta[particle_idx]), np.mean(cos_theta[particle_idx])
+            )
             pose = (mean_x, mean_y, mean_theta)
+            covariance = (
+                (
+                    np.var(self._particles[:, 0]),
+                    np.var(self._particles[:, 1]),
+                    np.var(self._particles[:, 2]),
+                ),
+            )
 
-        return localized, pose
+        return localized, pose, covariance
 
     def move(self, v: float, w: float) -> None:
         """Performs a motion update on the particles.
