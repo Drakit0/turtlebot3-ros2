@@ -15,7 +15,7 @@ def generate_launch_description():
         arguments=["--ros-args", "--log-level", "WARN"],
         parameters=[
             {
-                "enable_plot": False,
+                "enable_plot": True,
                 "global_localization": True,
                 "particles": 2000,
                 "sigma_v": 0.05,
@@ -36,7 +36,7 @@ def generate_launch_description():
         parameters=[
             {
                 "connection_distance": 0.15,
-                "enable_plot": False,
+                "enable_plot": True,
                 "goal": goal,
                 "grid_size": 0.1,
                 "node_count": 250,
@@ -52,8 +52,8 @@ def generate_launch_description():
 
     odometry_node = LifecycleNode(
         package="amr_turtlebot3",
-        executable="odometry",
-        name="odometry",
+        executable="odometry_node",
+        name="odometry_node",
         namespace="",
         output="screen",
         arguments=["--ros-args", "--log-level", "INFO"],
@@ -80,9 +80,9 @@ def generate_launch_description():
     )
 
     monitoring_node = LifecycleNode(
-        package="amr_simulation",
-        executable="monitoring",
-        name="monitoring",
+        package="amr_turtlebot3",
+        executable="monitoring_node",
+        name="monitoring_node",
         namespace="",
         output="screen",
         arguments=["--ros-args", "--log-level", "WARN"],
@@ -103,11 +103,11 @@ def generate_launch_description():
             {
                 "node_startup_order": (
                     "particle_filter",
+                    "odometry_node",
                     "probabilistic_roadmap",
-                    "odometry",
                     "wall_follower",
                     "pure_pursuit",
-                    "monitoring",
+                    "monitoring_node",
                 )
             }
         ],
@@ -116,8 +116,8 @@ def generate_launch_description():
     return LaunchDescription(
         [
             particle_filter_node,
-            probabilistic_roadmap_node,
             odometry_node,
+            probabilistic_roadmap_node,
             wall_follower_node,
             pure_pursuit_node,
             monitoring_node,

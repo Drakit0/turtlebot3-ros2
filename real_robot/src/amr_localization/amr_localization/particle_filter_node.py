@@ -170,67 +170,56 @@ class ParticleFilterNode(LifecycleNode):
         z_w: float = odom_msg.twist.twist.angular.z
         z_scan: list[float] = scan_msg.ranges
 
-        if True:
-            if not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001)):
 
-                self._last_measurements.append((z_v, z_w, z_scan))
+        if not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001)):
 
-                if len(self._last_measurements) == self._num_measurements_for_calculation:
+            self._last_measurements.append((z_v, z_w, z_scan))
 
-                    move_msg = Move()
-                    move_msg.move = False
-                    self._move_publisher.publish(move_msg)
-                    
-                    for i, (z_v, z_w, z_scan) in enumerate(self._last_measurements):
-                        # Execute particle filter
-                        self._steps += 1
-                        self._execute_motion_step(z_v, z_w)
+            if len(self._last_measurements) == self._num_measurements_for_calculation:
+
+                move_msg = Move()
+                move_msg.move = False
+                self._move_publisher.publish(move_msg)
+                
+                for i, (z_v, z_w, z_scan) in enumerate(self._last_measurements):
+                    # Execute particle filter
+                    self._steps += 1
+                    self._execute_motion_step(z_v, z_w)
+                x_h, y_h, theta_h = self._execute_measurement_step(
+                    self._last_measurements[-1][2]
+                )
+                self._last_measurements = []
+                
+                self._theta_h = theta_h
+                self._x_h = x_h
+                self._y_h = y_h
+                
+                # Publish
+                self._publish_pose_estimate(x_h, y_h, theta_h)
+                move_msg = Move()
+                move_msg.move = True
+                self._move_publisher.publish(move_msg)
+
+                
+            elif self._localized:
+                if self._theta_h is None: 
                     x_h, y_h, theta_h = self._execute_measurement_step(
                         self._last_measurements[-1][2]
                     )
-                    self._last_measurements = []
-                    
                     self._theta_h = theta_h
                     self._x_h = x_h
                     self._y_h = y_h
-                    
-                    # Publish
-                    self._publish_pose_estimate(x_h, y_h, theta_h)
-                    move_msg = Move()
-                    move_msg.move = True
-                    self._move_publisher.publish(move_msg)
-                    
-                    
-                    self._localized = True
-                    
-                else:
-                    if self._theta_h is None: 
-                        x_h, y_h, theta_h = self._execute_measurement_step(
-                            self._last_measurements[-1][2]
-                        )
-                        self._theta_h = theta_h
-                        self._x_h = x_h
-                        self._y_h = y_h
-                    old_theta = self._theta_h
-                    self._theta_h += z_w*self.get_parameter("dt").get_parameter_value().double_value
-                    self._x_h += z_v*math.cos((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
-                    self._y_h += z_v*math.sin((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
-                    
-                    self._publish_pose_estimate(self._x_h, self._y_h, self._theta_h)
-                    move_msg = Move()
-                    move_msg.move = True
-                    self._move_publisher.publish(move_msg)
-        else:
-            old_theta = self._theta_h
-            
-            self._theta_h += z_w*self.get_parameter("dt").get_parameter_value().double_value
-            self._x_h += z_v*math.cos((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
-            self._y_h += z_v*math.sin((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
-            
-            self._publish_pose_estimate(self._x_h, self._y_h, self._theta_h)
-            move_msg = Move()
-            move_msg.move = True
-            self._move_publisher.publish(move_msg)
+                old_theta = self._theta_h
+                self.get_logger().warn(f"{self._x_h=}, {self._theta_h=}, {old_theta=}")
+                self._theta_h += z_w*self.get_parameter("dt").get_parameter_value().double_value
+                self._x_h += z_v*math.cos((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
+                self._y_h += z_v*math.sin((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
+                
+                self._publish_pose_estimate(self._x_h, self._y_h, self._theta_h)
+                move_msg = Move()
+                move_msg.move = True
+                self._move_publisher.publish(move_msg)
+
             
     def _execute_measurement_step(
         self, z_us: list[float]
@@ -244,7 +233,7 @@ class ParticleFilterNode(LifecycleNode):
             Pose estimate (x_h, y_h, theta_h) [m, m, rad]; inf if cannot be computed.
         """
         pose = (float("inf"), float("inf"), float("inf"))
-
+        self.get_logger().warn(f"Localized: {self._localized}, other: {not self._steps % self._steps_btw_sense_updates}")
         if self._localized or not self._steps % self._steps_btw_sense_updates:
             start_time = time.perf_counter()
             self._particle_filter.resample(z_us)
