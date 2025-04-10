@@ -39,7 +39,7 @@ class ParticleFilterNode(LifecycleNode):
         self.declare_parameter("sigma_z", 0.1)
         self.declare_parameter("steps_btw_sense_updates", 10)
         self.declare_parameter("world", "lab03")
-
+        
     def on_configure(self, state: LifecycleState) -> TransitionCallbackReturn:
         """Handles a configuring transition.
 
@@ -136,6 +136,8 @@ class ParticleFilterNode(LifecycleNode):
                 self._subscribers, queue_size=4, slop=0.25
             )
             ts.registerCallback(self._compute_pose_callback)
+            
+            self._theta_h = None
 
         except Exception:
             self.get_logger().error(f"{traceback.format_exc()}")
@@ -163,39 +165,73 @@ class ParticleFilterNode(LifecycleNode):
 
         """
         # Parse measurements
-
+        
         z_v: float = odom_msg.twist.twist.linear.x
         z_w: float = odom_msg.twist.twist.angular.z
         z_scan: list[float] = scan_msg.ranges
-        # self.get_logger().warn(f"{z_v=}, {z_w=}, {not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001))}")
 
-        if not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001)):
+        if True:
+            if not (np.isclose(z_v, 0.0, atol=0.001) and np.isclose(z_w, 0.0, atol=0.001)):
 
-            self._last_measurements.append((z_v, z_w, z_scan))
-            # self.get_logger().warn(f"Added one to _last_measuremets: {len(self._last_measurements)}")
+                self._last_measurements.append((z_v, z_w, z_scan))
 
-            if len(self._last_measurements) == self._num_measurements_for_calculation:
+                if len(self._last_measurements) == self._num_measurements_for_calculation:
 
-                move_msg = Move()
-                move_msg.move = False
-                self._move_publisher.publish(move_msg)
-                self.get_logger().warn(f"Stopping the robot")
-                
-                for i, (z_v, z_w, z_scan) in enumerate(self._last_measurements):
-                    # Execute particle filter
-                    self._steps += 1
-                    self._execute_motion_step(z_v, z_w)
-                x_h, y_h, theta_h = self._execute_measurement_step(
-                    self._last_measurements[-1][2]
-                )
-                self._last_measurements = []
-
-                # Publish
-                self._publish_pose_estimate(x_h, y_h, theta_h)
-                # move_msg = Move()
-                move_msg.move = True
-                self._move_publisher.publish(move_msg)
-
+                    move_msg = Move()
+                    move_msg.move = False
+                    self._move_publisher.publish(move_msg)
+                    
+                    for i, (z_v, z_w, z_scan) in enumerate(self._last_measurements):
+                        # Execute particle filter
+                        self._steps += 1
+                        self._execute_motion_step(z_v, z_w)
+                    x_h, y_h, theta_h = self._execute_measurement_step(
+                        self._last_measurements[-1][2]
+                    )
+                    self._last_measurements = []
+                    
+                    self._theta_h = theta_h
+                    self._x_h = x_h
+                    self._y_h = y_h
+                    
+                    # Publish
+                    self._publish_pose_estimate(x_h, y_h, theta_h)
+                    move_msg = Move()
+                    move_msg.move = True
+                    self._move_publisher.publish(move_msg)
+                    
+                    
+                    self._localized = True
+                    
+                else:
+                    if self._theta_h is None: 
+                        x_h, y_h, theta_h = self._execute_measurement_step(
+                            self._last_measurements[-1][2]
+                        )
+                        self._theta_h = theta_h
+                        self._x_h = x_h
+                        self._y_h = y_h
+                    old_theta = self._theta_h
+                    self._theta_h += z_w*self.get_parameter("dt").get_parameter_value().double_value
+                    self._x_h += z_v*math.cos((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
+                    self._y_h += z_v*math.sin((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
+                    
+                    self._publish_pose_estimate(self._x_h, self._y_h, self._theta_h)
+                    move_msg = Move()
+                    move_msg.move = True
+                    self._move_publisher.publish(move_msg)
+        else:
+            old_theta = self._theta_h
+            
+            self._theta_h += z_w*self.get_parameter("dt").get_parameter_value().double_value
+            self._x_h += z_v*math.cos((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
+            self._y_h += z_v*math.sin((self._theta_h + old_theta)/2)*self.get_parameter("dt").get_parameter_value().double_value
+            
+            self._publish_pose_estimate(self._x_h, self._y_h, self._theta_h)
+            move_msg = Move()
+            move_msg.move = True
+            self._move_publisher.publish(move_msg)
+            
     def _execute_measurement_step(
         self, z_us: list[float]
     ) -> tuple[float, float, float]:
@@ -226,7 +262,7 @@ class ParticleFilterNode(LifecycleNode):
             self.get_logger().info(f"Clustering time: {clustering_time:6.3f} s")
             if self._localized:
                 # Cuando se localiza seguir la pose en cada paso
-                self._num_measurements_for_calculation = 1
+                self._num_measurements_for_calculation = 20
 
         return pose
 

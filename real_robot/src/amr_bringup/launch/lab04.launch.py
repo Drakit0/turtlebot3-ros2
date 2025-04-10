@@ -25,7 +25,7 @@ def generate_launch_description():
         arguments=["--ros-args", "--log-level", "WARN"],
         parameters=[
             {
-                "enable_plot": False,
+                "enable_plot": True,
                 "global_localization": global_localization,
                 "initial_pose": start,
                 "initial_pose_sigma": start_sigma,
@@ -52,7 +52,7 @@ def generate_launch_description():
                 "goal": goal,
                 "grid_size": 0.1,
                 "node_count": 250,
-                "obstacle_safety_distance": 0.12,  # 0.08,
+                "obstacle_safety_distance": 0.18,  # 0.08,
                 "smoothing_additional_points": 3,
                 "smoothing_data_weight": 0.1,
                 "smoothing_smooth_weight": 0.25,
@@ -69,7 +69,7 @@ def generate_launch_description():
         namespace="",
         output="screen",
         arguments=["--ros-args", "--log-level", "WARN"],
-        parameters=[{"lookahead_distance": 0.15}],
+        parameters=[{"lookahead_distance": 0.3}],
     )
 
     # coppeliasim_node = LifecycleNode(
