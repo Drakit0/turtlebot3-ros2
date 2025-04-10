@@ -148,13 +148,11 @@ class ParticleFilter:
                 np.mean(sin_theta[particle_idx]), np.mean(cos_theta[particle_idx])
             )
             pose = (mean_x, mean_y, mean_theta)
-            covariance = (
-                (
+            covariance =(
                     np.var(self._particles[:, 0]),
                     np.var(self._particles[:, 1]),
                     np.var(self._particles[:, 2]),
-                ),
-            )
+                )
 
         return localized, pose, covariance
 

@@ -44,7 +44,7 @@ class PurePursuit:
         beta = math.atan2(target_point[1] - y, target_point[0] - x)
         alpha = beta - theta
 
-        rclpy.logging.get_logger("pure_pursuit").warn(f"closest_idx: {closest_idx}")
+        # rclpy.logging.get_logger("pure_pursuit").warn(f"closest_idx: {closest_idx}")
 
         if abs(alpha) > math.pi / 4 and not abs(alpha) > 7 * math.pi / 4:
             w = math.copysign(1, alpha)

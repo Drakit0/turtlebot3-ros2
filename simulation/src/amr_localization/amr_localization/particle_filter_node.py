@@ -134,7 +134,7 @@ class ParticleFilterNode(LifecycleNode):
             )
             ts.registerCallback(self._compute_pose_callback)
 
-            self.ekf = None
+            self.ekf = None if global_localization else EKF(0.05, initial_pose, initial_pose_sigma, sigma_v, sigma_w, sigma_z)
 
         except Exception:
             self.get_logger().error(f"{traceback.format_exc()}")
@@ -185,6 +185,7 @@ class ParticleFilterNode(LifecycleNode):
                 z_scan,
                 (x, y, theta),
             )
+            self.get_logger().warn(f"EKF: {x_h}, {y_h}, {theta_h}")
 
         # Publish
         self._publish_pose_estimate(x_h, y_h, theta_h)
