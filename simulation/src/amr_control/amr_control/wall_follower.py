@@ -8,6 +8,7 @@ class WallFollowerStates(Enum):
     RIGHT = auto()
     LEFT = auto()
     TURN180 = auto()
+    RIGHT_PATH = auto()
 
 
 class WallFollower:
@@ -95,13 +96,20 @@ class WallFollower:
         # get measurements
 
         d_front = z_scan[0]
+        n = len(z_scan)
         front_close = d_front < self.current_min_dist
-        d_right = z_scan[-(len(z_scan) // 4)]
-        d_right_45 = z_scan[-(len(z_scan) // 8)]
-        d_left = z_scan[len(z_scan) // 4]
-        d_left_45 = z_scan[len(z_scan) // 8]
-        d_left_middle = z_scan[len(z_scan) // 8 + len(z_scan) // 16]
-        d_right_middle = z_scan[-(len(z_scan) // 8) - (len(z_scan) // 16)]
+        d_back = z_scan[n//2]
+        d_right = z_scan[-(n // 4)]
+        d_right_45 = z_scan[-(n // 8)]
+        d_left = z_scan[n // 4]
+        d_left_45 = z_scan[n // 8]
+        d_left_middle = z_scan[n // 8 + n // 16]
+        d_right_middle = z_scan[-(n // 8) - (n // 16)]
+        d_right_45_back = z_scan[-(n // 8) - (n // 4)]
+        d_left_45_back = z_scan[n // 8 + (n // 4)]
+        d_right_middle_back = z_scan[-(n//4) - (n//16)]
+        d_left_middle_back = z_scan[n//4 + (n//16)]
+        
 
         # Transitions
         if self._state is WallFollowerStates.STOP:
@@ -116,23 +124,38 @@ class WallFollower:
                         self._state = WallFollowerStates.LEFT
                 else:
                     self._state = WallFollowerStates.TURN180
+            else:
+                # Si hay hueco a la derecha el robot gira a la derecha
+                if d_right > 3*self.current_min_dist and d_back > 1.5*self.current_min_dist:# and d_right_middle > self.current_min_dist and d_right_middle_back > self.current_min_dist:
+                    self._state = WallFollowerStates.RIGHT_PATH
+                
 
         elif self._state is WallFollowerStates.RIGHT:
             # Comprueba si hay hueco delante y si el rayo a 90º, 45º y 22.5º siguen los ratios que deben seguir para que la pared esté paralela
             if (
                 not front_close
-                and np.isclose(d_left * np.sqrt(2), d_left_45, atol=0.01)
+                # and (np.isclose(d_left * np.sqrt(2), d_left_45, atol=0.01)
                 and np.isclose(d_left, 0.923879 * d_left_middle, atol=0.01)
+                # or np.isclose(d_left*np.sqrt(2), d_left_45_back, atol=0.01)
+                and np.isclose(d_left, 0.923879 * d_left_middle_back, atol=0.01)             
             ):
                 self._state = WallFollowerStates.FORWARD
+                
+        elif self._state is WallFollowerStates.RIGHT_PATH:
+            if d_front >= 2*self.current_min_dist and np.isclose(d_left * np.sqrt(2), d_left_45, atol=0.02) and np.isclose(d_left, 0.923879 * d_left_middle, atol=0.01):#(d_right <= self.current_min_dist or d_right_middle <= self.current_min_dist) and (d_left <= self.current_min_dist or d_left_middle <= self.current_min_dist):
+                self._state = WallFollowerStates.FORWARD
+            elif d_front <= self.current_min_dist:
+                self._state = WallFollowerStates.LEFT
 
         elif self._state is WallFollowerStates.LEFT:
             # np.cos(np.pi/8) = 0.9238795325112867
             # Comprueba si hay hueco delante y si el rayo a 90º, 45º y 22.5º siguen los ratios que deben seguir para que la pared esté paralela
             if (
                 not front_close
-                and np.isclose(d_right * np.sqrt(2), d_right_45, atol=0.01)
+                # and (np.isclose(d_right * np.sqrt(2), d_right_45, atol=0.01)
                 and np.isclose(d_right, 0.923879 * d_right_middle, atol=0.02)
+                # or np.isclose(d_right*np.sqrt(2), d_right_45_back, atol=0.01)
+                and np.isclose(d_right, 0.923879 * d_right_middle_back, atol=0.01)
             ):
                 self._state = WallFollowerStates.FORWARD
 
@@ -157,6 +180,11 @@ class WallFollower:
             # self.current_min_dist = 0.5
             w = -0.3
             v = 0.0
+            
+        elif self._state is WallFollowerStates.RIGHT_PATH:
+            # self.current_min_dist = 0.5
+            v = 0.05
+            w = -v / 0.2
 
         elif self._state is WallFollowerStates.LEFT:
             # self.current_min_dist = 0.5
