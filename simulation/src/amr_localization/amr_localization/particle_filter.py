@@ -76,9 +76,9 @@ class ParticleFilter:
             particle_count, global_localization, initial_pose, initial_pose_sigma
         )
         self._figure, self._axes = plt.subplots(1, 1, figsize=(7, 7))
-        self._timestamp = datetime.datetime.now(
-            pytz.timezone("Europe/Madrid")
-        ).strftime("%Y-%m-%d_%H-%M-%S")
+        self._timestamp = datetime.datetime.now(pytz.timezone("Europe/Madrid")).strftime(
+            "%Y-%m-%d_%H-%M-%S"
+        )
 
         self._num_rays = 8
 
@@ -148,11 +148,11 @@ class ParticleFilter:
                 np.mean(sin_theta[particle_idx]), np.mean(cos_theta[particle_idx])
             )
             pose = (mean_x, mean_y, mean_theta)
-            covariance =(
-                    np.var(self._particles[:, 0]),
-                    np.var(self._particles[:, 1]),
-                    np.var(self._particles[:, 2]),
-                )
+            covariance = (
+                np.var(self._particles[:, 0]),
+                np.var(self._particles[:, 1]),
+                np.var(self._particles[:, 2]),
+            )
 
         return localized, pose, covariance
 
@@ -181,9 +181,7 @@ class ParticleFilter:
         theta_new = (self._particles[:, 2] + w_with_noise * self._dt) % (2 * np.pi)
         for i, (x, y) in enumerate(zip(x_new, y_new)):
             if all((x, y) != self._particles[i, :2]):
-                intersection, _ = self._map.check_collision(
-                    [(x, y), self._particles[i, :2]]
-                )
+                intersection, _ = self._map.check_collision([(x, y), self._particles[i, :2]])
                 if intersection:
                     x_new[i] = intersection[0]
                     y_new[i] = intersection[1]
@@ -201,8 +199,7 @@ class ParticleFilter:
         """
         # TODO: 3.9. Complete the function body with your code (i.e., replace the pass statement).
         weights = [
-            self._measurement_probability(measurements, particle)
-            for particle in self._particles
+            self._measurement_probability(measurements, particle) for particle in self._particles
         ]
         weights /= np.sum(weights)
 
@@ -212,19 +209,14 @@ class ParticleFilter:
         resampled_particles = np.zeros_like(self._particles)
 
         for i in range(self._particle_count):
-            random_sample = np.random.uniform(
-                strata_boundaries[i], strata_boundaries[i + 1]
-            )
+            random_sample = np.random.uniform(strata_boundaries[i], strata_boundaries[i + 1])
             index = np.searchsorted(cumulative_weights, random_sample)
             resampled_particles[i] = self._particles[index]
 
         self._particles = resampled_particles
         return
         similarities = np.array(
-            [
-                self._measurement_probability(measurements, particle)
-                for particle in self._particles
-            ]
+            [self._measurement_probability(measurements, particle) for particle in self._particles]
         )
 
         # particle_idx = np.random.multinomial(self._particles.shape[0], similarities, size=self._particle_count)
@@ -238,9 +230,7 @@ class ParticleFilter:
         if similarities.sum() == 0:
             similarities += 1.0
         self._particles = np.array(
-            random.choices(
-                self._particles, weights=similarities, k=self._particle_count
-            )
+            random.choices(self._particles, weights=similarities, k=self._particle_count)
         )
 
     def plot(self, axes, orientation: bool = True):
@@ -420,11 +410,11 @@ class ParticleFilter:
         """
         # TODO: 3.7. Complete the function body (i.e., replace the code below).
         return np.exp(-0.5 * ((x - mu) / sigma) ** 2) / (sigma * np.sqrt(2 * np.pi))
-        diff = x - mu
-        return np.exp(-0.5 * np.sum(np.square(diff)) / sigma**2)
-        return np.exp(
-            -0.5 * (x - mu) @ (x - mu).T / sigma**2
-        )  # / (sigma * np.sqrt(2 * np.pi))
+        # diff = x - mu
+        # return np.exp(-0.5 * np.sum(np.square(diff)) / sigma**2)
+        # return np.exp(
+        #     -0.5 * (x - mu) @ (x - mu).T / sigma**2
+        # )  # / (sigma * np.sqrt(2 * np.pi))
 
     def _lidar_rays(
         self,
@@ -491,37 +481,37 @@ class ParticleFilter:
 
             probability *= self._gaussian(z_hat_i, self._sigma_z, z)
         return probability
-        particle_measurements = np.array(
-            [
-                m if not np.isnan(m) else self._sensor_range_min
-                for m in self._sense(particle)
-            ]
-        )
-        # rclpy.logging.get_logger("ma").warn(f"{len(particle_measurements)}, {len(measurements)}")
-        num_rays = 16
-        rays_step = 240 // num_rays
-
-        particle_measurements = self._sense(particle)
-
-        # measurements = [measurements[r*rays_step] for r in range(num_rays)]
-        # probability = self._gaussian(
-        #     np.array([m if not np.isnan(m) else self._sensor_range_min for m in measurements]),
-        #     self._sigma_z,
-        #     particle_measurements,
+        # particle_measurements = np.array(
+        #     [
+        #         m if not np.isnan(m) else self._sensor_range_min
+        #         for m in self._sense(particle)
+        #     ]
         # )
+        # # rclpy.logging.get_logger("ma").warn(f"{len(particle_measurements)}, {len(measurements)}")
+        # num_rays = 16
+        # rays_step = 240 // num_rays
 
-        real_measurements = [measurements[r * rays_step] for r in range(num_rays)]
+        # particle_measurements = self._sense(particle)
 
-        # Calcular la probabilidad para cada par de mediciones
-        for z_real, z_pred in zip(real_measurements, particle_measurements):
-            # Manejar valores NaN
-            if np.isnan(z_pred):
-                z_pred = self._sensor_range_min
-            if np.isnan(z_real):
-                z_real = self._sensor_range_min
+        # # measurements = [measurements[r*rays_step] for r in range(num_rays)]
+        # # probability = self._gaussian(
+        # #     np.array([m if not np.isnan(m) else self._sensor_range_min for m in measurements]),
+        # #     self._sigma_z,
+        # #     particle_measurements,
+        # # )
 
-            # Calcular la probabilidad con una distribución gaussiana clásica
-            prob = np.exp(-0.5 * ((z_real - z_pred) / self._sigma_z) ** 2)
-            probability *= prob
+        # real_measurements = [measurements[r * rays_step] for r in range(num_rays)]
 
-        return probability
+        # # Calcular la probabilidad para cada par de mediciones
+        # for z_real, z_pred in zip(real_measurements, particle_measurements):
+        #     # Manejar valores NaN
+        #     if np.isnan(z_pred):
+        #         z_pred = self._sensor_range_min
+        #     if np.isnan(z_real):
+        #         z_real = self._sensor_range_min
+
+        #     # Calcular la probabilidad con una distribución gaussiana clásica
+        #     prob = np.exp(-0.5 * ((z_real - z_pred) / self._sigma_z) ** 2)
+        #     probability *= prob
+
+        # return probability

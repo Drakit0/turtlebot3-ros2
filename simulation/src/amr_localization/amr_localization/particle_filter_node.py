@@ -14,6 +14,8 @@ from sensor_msgs.msg import LaserScan
 
 import math
 import os
+import json
+import numpy as np
 import time
 import traceback
 from transforms3d.euler import euler2quat, quat2euler
@@ -48,41 +50,29 @@ class ParticleFilterNode(LifecycleNode):
             state: Current lifecycle state.
 
         """
-        self.get_logger().info(
-            f"Transitioning from '{state.label}' to 'inactive' state."
-        )
+        self.get_logger().info(f"Transitioning from '{state.label}' to 'inactive' state.")
 
         try:
             # Parameters
             dt = self.get_parameter("dt").get_parameter_value().double_value
-            self._enable_plot = (
-                self.get_parameter("enable_plot").get_parameter_value().bool_value
-            )
+            self._enable_plot = self.get_parameter("enable_plot").get_parameter_value().bool_value
             global_localization = (
-                self.get_parameter("global_localization")
-                .get_parameter_value()
-                .bool_value
+                self.get_parameter("global_localization").get_parameter_value().bool_value
             )
             initial_pose = tuple(
-                self.get_parameter("initial_pose")
-                .get_parameter_value()
-                .double_array_value.tolist()
+                self.get_parameter("initial_pose").get_parameter_value().double_array_value.tolist()
             )
             initial_pose_sigma = tuple(
                 self.get_parameter("initial_pose_sigma")
                 .get_parameter_value()
                 .double_array_value.tolist()
             )
-            particles = (
-                self.get_parameter("particles").get_parameter_value().integer_value
-            )
+            particles = self.get_parameter("particles").get_parameter_value().integer_value
             sigma_v = self.get_parameter("sigma_v").get_parameter_value().double_value
             sigma_w = self.get_parameter("sigma_w").get_parameter_value().double_value
             sigma_z = self.get_parameter("sigma_z").get_parameter_value().double_value
             self._steps_btw_sense_updates = (
-                self.get_parameter("steps_btw_sense_updates")
-                .get_parameter_value()
-                .integer_value
+                self.get_parameter("steps_btw_sense_updates").get_parameter_value().integer_value
             )
             world = self.get_parameter("world").get_parameter_value().string_value
 
@@ -120,13 +110,9 @@ class ParticleFilterNode(LifecycleNode):
             )
 
             self._subscribers: list[message_filters.Subscriber] = []
+            self._subscribers.append(message_filters.Subscriber(self, Odometry, "/odometry"))
             self._subscribers.append(
-                message_filters.Subscriber(self, Odometry, "/odometry")
-            )
-            self._subscribers.append(
-                message_filters.Subscriber(
-                    self, LaserScan, "/scan", qos_profile=scan_qos_profile
-                )
+                message_filters.Subscriber(self, LaserScan, "/scan", qos_profile=scan_qos_profile)
             )
 
             ts = message_filters.ApproximateTimeSynchronizer(
@@ -134,7 +120,25 @@ class ParticleFilterNode(LifecycleNode):
             )
             ts.registerCallback(self._compute_pose_callback)
 
-            self.ekf = None if global_localization else EKF(0.05, initial_pose, initial_pose_sigma, sigma_v, sigma_w, sigma_z)
+            self._load_wall_params()
+
+            # self.sigma_v = sigma_v
+            # self.sigma_w = sigma_w
+            # self.sigma_z = sigma_z
+
+            self.ekf = (
+                None
+                if global_localization
+                else EKF(
+                    0.05,
+                    initial_pose,
+                    initial_pose_sigma,
+                    sigma_v,
+                    sigma_w,
+                    sigma_z,
+                    self.wall_params,
+                )
+            )
 
         except Exception:
             self.get_logger().error(f"{traceback.format_exc()}")
@@ -172,27 +176,22 @@ class ParticleFilterNode(LifecycleNode):
             x_h, y_h, theta_h = self._execute_measurement_step(z_scan)
             self._steps += 1
         else:
-            x = odom_msg.pose.pose.position.x
-            y = odom_msg.pose.pose.position.y
-            quat_w = odom_msg.pose.pose.orientation.w
-            quat_x = odom_msg.pose.pose.orientation.x
-            quat_y = odom_msg.pose.pose.orientation.y
-            quat_z = odom_msg.pose.pose.orientation.z
-            _, _, theta = quat2euler((quat_w, quat_x, quat_y, quat_z))
-            theta %= 2 * math.pi
+            # x = odom_msg.pose.pose.position.x
+            # y = odom_msg.pose.pose.position.y
+            # quat_w = odom_msg.pose.pose.orientation.w
+            # quat_x = odom_msg.pose.pose.orientation.x
+            # quat_y = odom_msg.pose.pose.orientation.y
+            # quat_z = odom_msg.pose.pose.orientation.z
+            # _, _, theta = quat2euler((quat_w, quat_x, quat_y, quat_z))
+            # theta %= 2 * math.pi
             self.ekf.predict(z_v, z_w)
-            x_h, y_h, theta_h = self.ekf.update(
-                z_scan,
-                (x, y, theta),
-            )
+            x_h, y_h, theta_h = self.ekf.update(z_scan)
             self.get_logger().warn(f"EKF: {x_h}, {y_h}, {theta_h}")
 
         # Publish
         self._publish_pose_estimate(x_h, y_h, theta_h)
 
-    def _execute_measurement_step(
-        self, z_us: list[float]
-    ) -> tuple[float, float, float]:
+    def _execute_measurement_step(self, z_us: list[float]) -> tuple[float, float, float]:
         """Executes and monitors the measurement step (sense) of the particle filter.
 
         Args:
@@ -218,7 +217,16 @@ class ParticleFilterNode(LifecycleNode):
             clustering_time = time.perf_counter() - start_time
 
             if self._localized:
-                self.ekf = EKF(0.05, pose, covariance)
+                # self.ekf = EKF(0.05, pose, covariance)
+                self.ekf = EKF(
+                    0.05,
+                    pose,
+                    covariance,
+                    0.1,
+                    0.1,
+                    0.1,
+                    self.wall_params,
+                )
 
             self.get_logger().info(f"Clustering time: {clustering_time:6.3f} s")
 
@@ -267,6 +275,34 @@ class ParticleFilterNode(LifecycleNode):
             msg.pose.orientation.w = w
 
         self._pose_publisher.publish(msg)
+
+    def _load_wall_params(self, map_path="lab03.json"):
+        """
+        Loads the wall parameters from the map file.
+
+        Args
+        ----
+         - map_path: Path to the map file.
+
+        """
+        pkg_dir = os.path.dirname(__file__)
+        map_path = os.path.join(pkg_dir, "..", "maps", map_path)
+
+        data = json.load(open(map_path))
+        self.wall_params = []
+        boundary: list[list[float]] = data["metric"]["boundary"]
+
+        for (x1, y1), (x2, y2) in zip(boundary[:-1], boundary[1:]):
+            dx = x2 - x1
+            dy = y2 - y1
+            length = math.sqrt(dx**2 + dy**2)
+
+            if length < 0.1:
+                continue
+
+            alpha = math.atan2(dy, dx) + math.pi / 2
+            rho = x1 * math.cos(alpha) + y1 * math.sin(alpha)
+            self.wall_params.append([alpha, rho])
 
 
 def main(args=None):

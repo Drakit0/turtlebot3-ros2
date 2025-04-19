@@ -8,7 +8,9 @@ from coppeliasim_zmqremoteapi_client import RemoteAPIClient
 class CoppeliaSim:
     """CoppeliaSim robot simulator driver."""
 
-    def __init__(self, dt: float, start: tuple[float, float, float], goal_tolerance: float, ip: str = ""):
+    def __init__(
+        self, dt: float, start: tuple[float, float, float], goal_tolerance: float, ip: str = ""
+    ):
         """CoppeliaSim driver initializer.
 
         Args:
@@ -21,10 +23,11 @@ class CoppeliaSim:
         self._dt: float = dt
         self._goal_tolerance: float = goal_tolerance
         self._steps: int = 0
-                
 
-        self._client = RemoteAPIClient(host=socket.gethostbyname("host.docker.internal"), port=23000)
-            
+        self._client = RemoteAPIClient(
+            host=socket.gethostbyname("host.docker.internal"), port=23001
+        )
+
         self._sim = self._client.getObject("sim")
 
         # Stop any still running simulation

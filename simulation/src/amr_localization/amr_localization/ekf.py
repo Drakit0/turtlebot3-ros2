@@ -1,4 +1,5 @@
 import numpy as np
+from sensor_msgs.msg import LaserScan
 
 
 class EKF:
@@ -18,75 +19,225 @@ class EKF:
         sigma_v: float = 0.05,
         sigma_w: float = 0.1,
         sigma_z: float = 0.2,
+        wall_params: list[tuple[float, float]] = [
+            (0.5, 0.5),  # Wall 1: (x, y)
+        ],
     ):
         self.mu = np.array(initial_pose)
         self.Sigma = np.diag(np.array(initial_covariance))
         self.dt = dt
-        self.sigma_v = sigma_v
-        self.sigma_w = sigma_w
-        self.sigma_z = sigma_z
+        self.sv2 = sigma_v**2
+        self.sw2 = sigma_w**2
+        self.sz2 = sigma_z**2
+        self.wall_params = wall_params  # List of tuples (x, y) for wall positions
+        self.maha_thres = 3.0
 
-    def predict(self, v, w):
+    def predict(self, v: float, w: float):
+        """
+        Predict the next state of the robot using the motion model.
+        It also updates the noise covariance.
+
+        Args
+        ----
+         - v: linear velocity of the robot
+         - w: angular velocity of the robot
+
+        """
         x = self.mu[0]
         y = self.mu[1]
         theta = self.mu[2]
-        R_t = 0.001 * np.eye(3)
+        # R_t = 0.001 * np.eye(3)
 
         dt = self.dt
 
-        g_x = x + (-v / w * np.sin(theta) + v / w * np.sin(theta + w * dt))
-        g_y = y + (v / w * np.cos(theta) - v / w * np.cos(theta + w * dt))
-        g_theta = theta + w * dt
+        # No rotation
+        if abs(w) < 1e-5:
+            g_x = x + v * dt * np.cos(theta)
+            g_y = y + v * dt * np.sin(theta)
+            g_theta = theta
 
-        self.mu[0] = g_x
-        self.mu[1] = g_y
-        self.mu[2] = g_theta
-        self.mu[2] %= 2 * np.pi
+        else:
+            g_x = x + (-v / w * np.sin(theta) + v / w * np.sin(theta + w * dt))
+            g_y = y + (v / w * np.cos(theta) - v / w * np.cos(theta + w * dt))
+            g_theta = theta + w * dt
 
-        G = np.array(
-            [
+        # Predict Jacobian motion
+        if abs(w) < 1e-5:
+            G = np.array([1, 0, -v * dt * np.sin(theta)], [0, 1, v * dt * np.cos(theta)], [0, 0, 1])
+
+        else:
+            G = np.array(
                 [
-                    1,
-                    0,
-                    -v / w * np.cos(self.mu[2]) + v / w * np.cos(self.mu[2] + w * dt),
-                ],
-                [
-                    0,
-                    1,
-                    -v / w * np.sin(self.mu[2]) + v / w * np.sin(self.mu[2] + w * dt),
-                ],
-                [0, 0, 1],
-            ]
-        )
-
-        self.Sigma = G @ self.Sigma @ G.T + R_t
-
-    def update(self, z_scan, pose):
-        Q_t = 0.001 * np.eye(2)
-        d_alpha = 2 * np.pi / len(z_scan)
-
-        for i, r in enumerate(z_scan):
-            phi = i * d_alpha
-
-            dx_r = r * np.cos(phi) / np.sqrt(r)
-            dy_r = r * np.sin(phi) / np.sqrt(r)
-
-            dx = dx_r - (pose[0] - self.mu[0])
-            dy = dy_r - (pose[1] - self.mu[1])
-            d = (dx**2 + dy**2) ** (1 / 2)
-
-            H = np.array(
-                [
-                    [-dx / d ** (1 / 2), -dy / d ** (1 / 2), 0],
-                    [dy / d, -dx / d, -1],
+                    [1, 0, -v / w * np.cos(theta) + v / w * np.cos(theta + w * dt)],
+                    [0, 1, -v / w * np.sin(theta) + v / w * np.sin(theta + w * dt)],
+                    [0, 0, 1],
                 ]
             )
-            S = H @ self.Sigma @ H.T + Q_t
-            K = self.Sigma @ H.T @ np.linalg.inv(S)
-            y = np.array([z_scan[i], phi]) - np.array(
-                [d, np.arctan2(dy, dx) - self.mu[2]]
+
+        # Predict Jacobian noise
+        if abs(w) < 1e-5:
+            V = np.array(
+                [
+                    [dt * np.cos(theta), 0],
+                    [dt * np.sin(theta), 0],
+                    [0, dt],
+                ]
             )
-            self.mu += K @ y
-            self.mu[2] %= 2 * np.pi
+
+        else:
+            V = np.array(
+                [
+                    [
+                        (-np.sin(theta) + np.sin(theta + w * dt)) / w,
+                        v * (np.sin(theta) - np.sin(theta + w * dt)) / (w**2)
+                        + v * dt * np.cos(theta + w * dt) / w,
+                    ],
+                    [
+                        (np.cos(theta) - np.cos(theta + w * dt)) / w,
+                        -v * (-np.cos(theta) - np.cos(theta + w * dt)) / (w**2)
+                        + v * dt * np.sin(theta + w * dt) / w,
+                    ],
+                    [0, dt],
+                ]
+            )
+
+        # Moving noise cov
+        R_t = V @ np.diag([self.sv2, self.sw2]) @ V.T
+
+        # Update moving state
+        self.mu = np.array([g_x, g_y, g_theta % 2 * np.pi])  # Keep theta in [0, 2pi]
+        self.Sigma = G @ self.Sigma @ G.T + R_t
+
+    def update(self, z_scan: LaserScan.ranges):
+        """
+        Update the state of the robot using the laser scan measurements.
+
+        Args
+        ----
+         - z_scan: Laser scan measurements
+        """
+
+        # Extract walls meassurements
+        min_angle = min(z_scan)
+        inc_angle = 2 * np.pi / len(z_scan)
+        # angles = min_angle + np.arange(len(z_scan)) * inc_angle
+        angles = np.linspace(min_angle, min_angle + 2 * np.pi, len(z_scan), endpoint=False)
+        z_scan = np.array(z_scan)
+
+        r_right, theta_right = self.avg_measurements(
+            z_scan,
+            min_angle,
+            inc_angle,
+            angles,
+            -np.pi / 2,
+        )
+        r_left, theta_left = self.avg_measurements(
+            z_scan,
+            min_angle,
+            inc_angle,
+            angles,
+            np.pi / 2,
+        )
+
+        # Associate walls
+        (alpha_r, rho_r), (alpha_l, rho_l) = self.select_wall()
+
+        measurements = []
+
+        if r_right is not None:
+            measurements.append((r_right, theta_right, alpha_r, rho_r))
+        if r_left is not None:
+            measurements.append((r_left, theta_left, alpha_l, rho_l))
+
+        # No walls detected (corner)
+        if len(measurements) == 0:
+            return self.mu
+
+        # Updating noise cov
+        Q_t = np.diag([self.sz2, self.sz2])
+
+        # Update based on landmarks
+        for r, phi, alpha, rho in measurements:
+            x = self.mu[0]
+            y = self.mu[1]
+            theta = self.mu[2]
+
+            rho_pred = x * np.cos(alpha) + y * np.sin(alpha)
+            gamma_pred = (alpha - theta + np.pi) % (2 * np.pi) - np.pi  # gamma in [-pi, pi]
+
+            # Update Jacobian
+            H = np.array(
+                [   
+                    [np.cos(alpha), np.sin(alpha), 0],
+                    [0, 0, -1],
+                ]
+            )
+
+            # Innovation vec: diff between pred and meas
+            y_vec = np.array([r - rho_pred, (phi - gamma_pred + np.pi) % (2 * np.pi)])
+
+            # Innovation cov
+            S = H @ self.Sigma @ H.T + Q_t
+
+            # Mahalanobis gate in case of outliers: dist point to prob dist
+            if float(y_vec.T @ np.linalg.inv(S) @ y_vec) > self.maha_thres:
+                continue
+
+            K = self.Sigma @ H.T @ np.linalg.inv(S)
+            self.mu += K @ y_vec
+            self.mu[2] = (self.mu[2] + np.pi) % (2 * np.pi) - np.pi  # theta in [-pi, pi]
             self.Sigma = (np.eye(3) - K @ H) @ self.Sigma
+
         return self.mu
+
+    def avg_measurements(
+        self,
+        z_scan: LaserScan.ranges,
+        min_angle: float,
+        inc_angle: float,
+        angles: np.ndarray,
+        center_angle: float,
+        window=5,
+    ):
+        """
+        Average the measurements in a window around the given angle.
+        """
+
+        # Find closest laser scan index to the center angle
+        center_index = int((center_angle - min_angle) / inc_angle)
+
+        if center_index < 0:
+            center_index = len(z_scan) + center_index
+
+        # indices = np.clip(
+        #     np.arange(center_index - window, center_index + window + 1), 0, len(z_scan) - 1
+        # )
+
+        # Find rs and thetas
+        measurements = z_scan[center_index - window : center_index + window + 1]
+        angles = angles[center_index - window : center_index + window + 1]
+
+        # Check rs and thetas
+        rs = measurements[measurements > 0]
+        thetas = angles[measurements > 0]
+
+        if len(rs) == 0:
+            return None, None
+
+        r = np.mean(rs)
+        theta = np.mean(thetas)
+        theta = (theta + np.pi) % (2 * np.pi) - np.pi  # theta in [-pi, pi]
+
+        return r, theta
+
+    def select_wall(self):
+        """
+        Select the left and right walls based on the robot's current orientation.
+        """
+
+        _, _, theta = self.mu
+        bearings = [(alpha - theta + np.pi) % (2 * np.pi) - np.pi for alpha, _ in self.wall_params]
+        idx_r = np.argmin(np.abs(bearings - (self.mu[2] + np.pi / 2) % (2 * np.pi)))
+        idx_l = np.argmin(np.abs(bearings - (self.mu[2] - np.pi / 2) % (2 * np.pi)))
+
+        return self.wall_params[idx_r], self.wall_params[idx_l]
