@@ -2,6 +2,14 @@ import numpy as np
 from sensor_msgs.msg import LaserScan
 
 
+def clip_angle(angle: float) -> float:
+    """
+    Clip the angle to the range [-pi, pi].
+    """
+
+    return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
 class EKF:
     def __init__(
         self,
@@ -94,7 +102,7 @@ class EKF:
                     ],
                     [
                         (np.cos(theta) - np.cos(theta + w * dt)) / w,
-                        -v * (-np.cos(theta) - np.cos(theta + w * dt)) / (w**2)
+                        -v * (np.cos(theta) - np.cos(theta + w * dt)) / (w**2)
                         + v * dt * np.sin(theta + w * dt) / w,
                     ],
                     [0, dt],
@@ -105,10 +113,12 @@ class EKF:
         R_t = V @ np.diag([self.sv2, self.sw2]) @ V.T
 
         # Update moving state
-        self.mu = np.array([g_x, g_y, g_theta % 2 * np.pi])  # Keep theta in [0, 2pi]
+        self.mu = np.array([g_x, g_y, clip_angle(g_theta)])
         self.Sigma = G @ self.Sigma @ G.T + R_t
 
-    def update(self, z_scan: LaserScan.ranges):
+        # return self.mu
+
+    def update(self, scan: LaserScan):
         """
         Update the state of the robot using the laser scan measurements.
 
@@ -118,20 +128,21 @@ class EKF:
         """
 
         # Extract walls meassurements
-        min_angle = min(z_scan)
-        inc_angle = 2 * np.pi / len(z_scan)
-        # angles = min_angle + np.arange(len(z_scan)) * inc_angle
-        angles = np.linspace(min_angle, min_angle + 2 * np.pi, len(z_scan), endpoint=False)
-        z_scan = np.array(z_scan)
+        z_scan = np.array(scan.ranges)
+        min_angle = 0  # scan.angle_min
+        inc_angle = 2 * np.pi / len(z_scan)  # scan.angle_increment
+        angles = min_angle + np.arange(len(z_scan)) * inc_angle
+        # angles = np.linspace(min_angle, min_angle + 2 * np.pi, len(z_scan), endpoint=False)
+        
 
-        r_right, theta_right = self.avg_measurements(
+        r_right, phi_right = self.avg_measurements(
             z_scan,
             min_angle,
             inc_angle,
             angles,
             -np.pi / 2,
         )
-        r_left, theta_left = self.avg_measurements(
+        r_left, phi_left = self.avg_measurements(
             z_scan,
             min_angle,
             inc_angle,
@@ -140,14 +151,14 @@ class EKF:
         )
 
         # Associate walls
-        (alpha_r, rho_r), (alpha_l, rho_l) = self.select_wall()
+        (alpha_right, rho_right), (alpha_left, rho_left) = self.select_wall()
 
         measurements = []
 
         if r_right is not None:
-            measurements.append((r_right, theta_right, alpha_r, rho_r))
+            measurements.append((r_right, phi_right, alpha_right, rho_right))
         if r_left is not None:
-            measurements.append((r_left, theta_left, alpha_l, rho_l))
+            measurements.append((r_left, phi_left, alpha_left, rho_left))
 
         # No walls detected (corner)
         if len(measurements) == 0:
@@ -162,19 +173,19 @@ class EKF:
             y = self.mu[1]
             theta = self.mu[2]
 
-            rho_pred = x * np.cos(alpha) + y * np.sin(alpha)
-            gamma_pred = (alpha - theta + np.pi) % (2 * np.pi) - np.pi  # gamma in [-pi, pi]
+            rho_pred = rho -(x * np.cos(alpha) + y * np.sin(alpha) )
+            gamma_pred = clip_angle(alpha - theta)
 
             # Update Jacobian
             H = np.array(
-                [   
-                    [np.cos(alpha), np.sin(alpha), 0],
+                [
+                    [-np.cos(alpha), -np.sin(alpha), 0],
                     [0, 0, -1],
                 ]
             )
 
             # Innovation vec: diff between pred and meas
-            y_vec = np.array([r - rho_pred, (phi - gamma_pred + np.pi) % (2 * np.pi)])
+            y_vec = np.array([r - rho_pred, clip_angle(phi - gamma_pred)])
 
             # Innovation cov
             S = H @ self.Sigma @ H.T + Q_t
@@ -185,7 +196,7 @@ class EKF:
 
             K = self.Sigma @ H.T @ np.linalg.inv(S)
             self.mu += K @ y_vec
-            self.mu[2] = (self.mu[2] + np.pi) % (2 * np.pi) - np.pi  # theta in [-pi, pi]
+            self.mu[2] = clip_angle(self.mu[2])
             self.Sigma = (np.eye(3) - K @ H) @ self.Sigma
 
         return self.mu
@@ -214,21 +225,18 @@ class EKF:
         # )
 
         # Find rs and thetas
-        measurements = z_scan[center_index - window : center_index + window + 1]
-        angles = angles[center_index - window : center_index + window + 1]
+        rs = z_scan[center_index - window : center_index + window + 1]
+        thetas = angles[center_index - window : center_index + window + 1]
 
-        # Check rs and thetas
-        rs = measurements[measurements > 0]
-        thetas = angles[measurements > 0]
-
-        if len(rs) == 0:
+        # Check rs
+        valid = np.isfinite(rs)
+        if not np.any(valid):
             return None, None
 
-        r = np.mean(rs)
-        theta = np.mean(thetas)
-        theta = (theta + np.pi) % (2 * np.pi) - np.pi  # theta in [-pi, pi]
+        r = np.mean(rs[valid])
+        phi = clip_angle(np.mean(thetas[valid]))
 
-        return r, theta
+        return r, phi
 
     def select_wall(self):
         """
@@ -236,8 +244,8 @@ class EKF:
         """
 
         _, _, theta = self.mu
-        bearings = [(alpha - theta + np.pi) % (2 * np.pi) - np.pi for alpha, _ in self.wall_params]
-        idx_r = np.argmin(np.abs(bearings - (self.mu[2] + np.pi / 2) % (2 * np.pi)))
-        idx_l = np.argmin(np.abs(bearings - (self.mu[2] - np.pi / 2) % (2 * np.pi)))
+        bearings = [clip_angle(alpha - theta) for alpha, _ in self.wall_params]
+        idx_r = np.argmin([np.abs(b + np.pi / 2) for b in bearings])
+        idx_l = np.argmin([np.abs(b - np.pi / 2) for b in bearings])
 
         return self.wall_params[idx_r], self.wall_params[idx_l]

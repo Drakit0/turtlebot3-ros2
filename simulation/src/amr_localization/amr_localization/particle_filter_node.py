@@ -24,6 +24,67 @@ from amr_localization.particle_filter import ParticleFilter
 
 from amr_localization.ekf import EKF
 
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
+import numpy as np
+
+class LabyrinthPlotter:
+    def __init__(self, data):
+        self.data = data
+        self.fig, self.ax = plt.subplots(figsize=(6, 6))
+        plt.ion()
+        self.fig.show()
+
+    def draw_map(self, x, y, theta, mu, sigma) -> None:
+        # Extract boundary points
+        boundary = self.data["metric"]["boundary"]
+        x_coords = [point[0] for point in boundary]
+        y_coords = [point[1] for point in boundary]
+
+        # Clear the previous plot
+        self.ax.clear()
+
+        # Draw the labyrinth boundary
+        self.ax.plot(x_coords, y_coords, 'k-')
+        self.ax.fill(x_coords, y_coords, facecolor='lightgray', edgecolor='black')
+
+        # --- Draw the Gaussian as an ellipse ---
+        self._draw_gaussian(mu, sigma)
+        
+        self.ax.plot(x, y, 'bo', markersize=5)  # Robot position
+
+        # Final plot settings
+        self.ax.set_aspect('equal', adjustable='box')
+        self.ax.set_title("2D Labyrinth Boundary with Gaussian Position")
+        self.ax.set_xlabel("X")
+        self.ax.set_ylabel("Y")
+        self.ax.grid(True)
+
+        # Redraw the canvas
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def _draw_gaussian(self, mu, sigma, n_std=1.0, **kwargs):
+        """
+        Draw an ellipse representing the n-std confidence interval of a 2D Gaussian.
+        """
+        mu = mu[:2]
+        sigma = sigma[:2, :2]
+        # Eigen decomposition of covariance
+        vals, vecs = np.linalg.eigh(sigma)
+        order = vals.argsort()[::-1]
+        vals = vals[order]
+        vecs = vecs[:, order]
+
+        # Calculate ellipse angle and axes
+        theta = np.degrees(np.arctan2(*vecs[:, 0][::-1]))
+        width, height = 2 * n_std * np.sqrt(vals)
+
+        # Create and add the ellipse
+        ellipse = Ellipse(xy=mu, width=width, height=height, angle=theta,
+                          edgecolor='red', facecolor='none', linewidth=2, **kwargs)
+        self.ax.add_patch(ellipse)
+
 
 class ParticleFilterNode(LifecycleNode):
     def __init__(self):
@@ -120,7 +181,8 @@ class ParticleFilterNode(LifecycleNode):
             )
             ts.registerCallback(self._compute_pose_callback)
 
-            self._load_wall_params()
+            self._load_wall_params(map_path)
+            self.labyrinth_plotter = LabyrinthPlotter(self.data)
 
             # self.sigma_v = sigma_v
             # self.sigma_w = sigma_w
@@ -185,8 +247,9 @@ class ParticleFilterNode(LifecycleNode):
             # _, _, theta = quat2euler((quat_w, quat_x, quat_y, quat_z))
             # theta %= 2 * math.pi
             self.ekf.predict(z_v, z_w)
-            x_h, y_h, theta_h = self.ekf.update(z_scan)
+            x_h, y_h, theta_h = self.ekf.update(scan_msg)
             self.get_logger().warn(f"EKF: {x_h}, {y_h}, {theta_h}")
+            self.labyrinth_plotter.draw_map(x_h, y_h, theta_h, self.ekf.mu, self.ekf.Sigma)
 
         # Publish
         self._publish_pose_estimate(x_h, y_h, theta_h)
@@ -285,10 +348,11 @@ class ParticleFilterNode(LifecycleNode):
          - map_path: Path to the map file.
 
         """
-        pkg_dir = os.path.dirname(__file__)
-        map_path = os.path.join(pkg_dir, "..", "maps", map_path)
+        # pkg_dir = os.path.dirname(__file__)
+        # map_path = os.path.join(pkg_dir, "..", "maps", map_path)
 
         data = json.load(open(map_path))
+        self.data = data
         self.wall_params = []
         boundary: list[list[float]] = data["metric"]["boundary"]
 
