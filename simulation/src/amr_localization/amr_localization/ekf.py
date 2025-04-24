@@ -38,7 +38,7 @@ class EKF:
         self.sw2 = sigma_w**2
         self.sz2 = sigma_z**2
         self.wall_params = wall_params  # List of tuples (x, y) for wall positions
-        self.maha_thres = 3.0
+        self.maha_thres = 3.8
 
     def predict(self, v: float, w: float):
         """
@@ -71,7 +71,9 @@ class EKF:
 
         # Predict Jacobian motion
         if abs(w) < 1e-5:
-            G = np.array([1, 0, -v * dt * np.sin(theta)], [0, 1, v * dt * np.cos(theta)], [0, 0, 1])
+            G = np.array(
+                [[1, 0, -v * dt * np.sin(theta)], [0, 1, v * dt * np.cos(theta)], [0, 0, 1]]
+            )
 
         else:
             G = np.array(
@@ -129,11 +131,9 @@ class EKF:
 
         # Extract walls meassurements
         z_scan = np.array(scan.ranges)
-        min_angle = 0  # scan.angle_min
-        inc_angle = 2 * np.pi / len(z_scan)  # scan.angle_increment
+        min_angle = 0
+        inc_angle = 2 * np.pi / len(z_scan)
         angles = min_angle + np.arange(len(z_scan)) * inc_angle
-        # angles = np.linspace(min_angle, min_angle + 2 * np.pi, len(z_scan), endpoint=False)
-        
 
         r_right, phi_right = self.avg_measurements(
             z_scan,
@@ -173,7 +173,7 @@ class EKF:
             y = self.mu[1]
             theta = self.mu[2]
 
-            rho_pred = rho -(x * np.cos(alpha) + y * np.sin(alpha) )
+            rho_pred = rho - (x * np.cos(alpha) + y * np.sin(alpha))
             gamma_pred = clip_angle(alpha - theta)
 
             # Update Jacobian
@@ -227,6 +227,15 @@ class EKF:
         # Find rs and thetas
         rs = z_scan[center_index - window : center_index + window + 1]
         thetas = angles[center_index - window : center_index + window + 1]
+
+        # pick the beam whose angle is closest to center_angle
+        diffs = clip_angle(angles - center_angle)
+        center_index = int(np.argmin(np.abs(diffs)))
+
+        # wrap around if necessary
+        idxs = np.arange(center_index - window, center_index + window + 1) % len(z_scan)
+        rs = z_scan[idxs]
+        thetas = angles[idxs]
 
         # Check rs
         valid = np.isfinite(rs)

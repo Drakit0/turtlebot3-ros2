@@ -25,7 +25,7 @@ class CoppeliaSim:
         self._steps: int = 0
 
         self._client = RemoteAPIClient(
-            host=socket.gethostbyname("host.docker.internal"), port=23001
+            host=socket.gethostbyname("host.docker.internal"), port=23000
         )
 
         self._sim = self._client.getObject("sim")

@@ -368,7 +368,7 @@ class ParticleFilter:
 
         return particles
 
-    def _sense(self, particle: tuple[float, float, float]) -> list[float]:
+    def _sense(self, particle: tuple[float, float, float], _num_rays = None) -> list[float]:
         """Obtains the predicted measurement of every LiDAR ray given the robot's pose.
 
         Args:
@@ -378,9 +378,12 @@ class ParticleFilter:
 
         """
         z_hat: list[float] = []
+        
+        if _num_rays is None:
+            _num_rays = self._num_rays
 
         # TODO: 3.6. Complete the missing function body with your code.
-        rays_step = 240 // self._num_rays
+        rays_step = 240 // _num_rays
         ray_indexes = [r * rays_step for r in range(self._num_rays)]
         for ray in self._lidar_rays(particle, ray_indexes):
             intersection, distance = self._map.check_collision(ray, True)

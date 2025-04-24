@@ -1,11 +1,6 @@
 import rclpy
 from rclpy.lifecycle import LifecycleNode, LifecycleState, TransitionCallbackReturn
-from rclpy.qos import (
-    QoSProfile,
-    QoSDurabilityPolicy,
-    QoSHistoryPolicy,
-    QoSReliabilityPolicy,
-)
+from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSHistoryPolicy, QoSReliabilityPolicy
 
 import message_filters
 from amr_msgs.msg import PoseStamped
@@ -14,76 +9,11 @@ from sensor_msgs.msg import LaserScan
 
 import math
 import os
-import json
-import numpy as np
 import time
 import traceback
-from transforms3d.euler import euler2quat, quat2euler
+from transforms3d.euler import euler2quat
 
 from amr_localization.particle_filter import ParticleFilter
-
-from amr_localization.ekf import EKF
-
-import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
-import numpy as np
-
-class LabyrinthPlotter:
-    def __init__(self, data):
-        self.data = data
-        self.fig, self.ax = plt.subplots(figsize=(6, 6))
-        plt.ion()
-        self.fig.show()
-
-    def draw_map(self, x, y, theta, mu, sigma) -> None:
-        # Extract boundary points
-        boundary = self.data["metric"]["boundary"]
-        x_coords = [point[0] for point in boundary]
-        y_coords = [point[1] for point in boundary]
-
-        # Clear the previous plot
-        self.ax.clear()
-
-        # Draw the labyrinth boundary
-        self.ax.plot(x_coords, y_coords, 'k-')
-        self.ax.fill(x_coords, y_coords, facecolor='lightgray', edgecolor='black')
-
-        # --- Draw the Gaussian as an ellipse ---
-        self._draw_gaussian(mu, sigma)
-        
-        self.ax.plot(x, y, 'bo', markersize=5)  # Robot position
-
-        # Final plot settings
-        self.ax.set_aspect('equal', adjustable='box')
-        self.ax.set_title("2D Labyrinth Boundary with Gaussian Position")
-        self.ax.set_xlabel("X")
-        self.ax.set_ylabel("Y")
-        self.ax.grid(True)
-
-        # Redraw the canvas
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-
-    def _draw_gaussian(self, mu, sigma, n_std=1.0, **kwargs):
-        """
-        Draw an ellipse representing the n-std confidence interval of a 2D Gaussian.
-        """
-        mu = mu[:2]
-        sigma = sigma[:2, :2]
-        # Eigen decomposition of covariance
-        vals, vecs = np.linalg.eigh(sigma)
-        order = vals.argsort()[::-1]
-        vals = vals[order]
-        vecs = vecs[:, order]
-
-        # Calculate ellipse angle and axes
-        theta = np.degrees(np.arctan2(*vecs[:, 0][::-1]))
-        width, height = 2 * n_std * np.sqrt(vals)
-
-        # Create and add the ellipse
-        ellipse = Ellipse(xy=mu, width=width, height=height, angle=theta,
-                          edgecolor='red', facecolor='none', linewidth=2, **kwargs)
-        self.ax.add_patch(ellipse)
 
 
 class ParticleFilterNode(LifecycleNode):
@@ -161,7 +91,7 @@ class ParticleFilterNode(LifecycleNode):
             # Publishers
             # TODO: 3.1. Create the /pose publisher (PoseStamped message).
             self._pose_publisher = self.create_publisher(PoseStamped, "/pose", 10)
-
+            
             # Subscribers
             scan_qos_profile = QoSProfile(
                 history=QoSHistoryPolicy.KEEP_LAST,
@@ -180,27 +110,6 @@ class ParticleFilterNode(LifecycleNode):
                 self._subscribers, queue_size=10, slop=9
             )
             ts.registerCallback(self._compute_pose_callback)
-
-            self._load_wall_params(map_path)
-            self.labyrinth_plotter = LabyrinthPlotter(self.data)
-
-            # self.sigma_v = sigma_v
-            # self.sigma_w = sigma_w
-            # self.sigma_z = sigma_z
-
-            self.ekf = (
-                None
-                if global_localization
-                else EKF(
-                    0.05,
-                    initial_pose,
-                    initial_pose_sigma,
-                    sigma_v,
-                    sigma_w,
-                    sigma_z,
-                    self.wall_params,
-                )
-            )
 
         except Exception:
             self.get_logger().error(f"{traceback.format_exc()}")
@@ -232,24 +141,10 @@ class ParticleFilterNode(LifecycleNode):
         z_w: float = odom_msg.twist.twist.angular.z
         z_scan: list[float] = scan_msg.ranges
 
-        if not self._localized:
-            # Execute particle filter
-            self._execute_motion_step(z_v, z_w)
-            x_h, y_h, theta_h = self._execute_measurement_step(z_scan)
-            self._steps += 1
-        else:
-            # x = odom_msg.pose.pose.position.x
-            # y = odom_msg.pose.pose.position.y
-            # quat_w = odom_msg.pose.pose.orientation.w
-            # quat_x = odom_msg.pose.pose.orientation.x
-            # quat_y = odom_msg.pose.pose.orientation.y
-            # quat_z = odom_msg.pose.pose.orientation.z
-            # _, _, theta = quat2euler((quat_w, quat_x, quat_y, quat_z))
-            # theta %= 2 * math.pi
-            self.ekf.predict(z_v, z_w)
-            x_h, y_h, theta_h = self.ekf.update(scan_msg)
-            self.get_logger().warn(f"EKF: {x_h}, {y_h}, {theta_h}")
-            self.labyrinth_plotter.draw_map(x_h, y_h, theta_h, self.ekf.mu, self.ekf.Sigma)
+        # Execute particle filter
+        self._execute_motion_step(z_v, z_w)
+        x_h, y_h, theta_h = self._execute_measurement_step(z_scan)
+        self._steps += 1
 
         # Publish
         self._publish_pose_estimate(x_h, y_h, theta_h)
@@ -278,18 +173,6 @@ class ParticleFilterNode(LifecycleNode):
             start_time = time.perf_counter()
             self._localized, pose, covariance = self._particle_filter.compute_pose()
             clustering_time = time.perf_counter() - start_time
-
-            if self._localized:
-                # self.ekf = EKF(0.05, pose, covariance)
-                self.ekf = EKF(
-                    0.05,
-                    pose,
-                    covariance,
-                    0.1,
-                    0.1,
-                    0.1,
-                    self.wall_params,
-                )
 
             self.get_logger().info(f"Clustering time: {clustering_time:6.3f} s")
 
@@ -324,11 +207,11 @@ class ParticleFilterNode(LifecycleNode):
         msg = PoseStamped()
 
         msg.localized = self._localized
-        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.stamp = self.get_clock().now().to_msg() 
 
         if self._localized:
             w, x, y, z = euler2quat(0, 0, theta_h)
-
+            
             msg.pose.position.x = x_h
             msg.pose.position.y = y_h
 
@@ -338,36 +221,8 @@ class ParticleFilterNode(LifecycleNode):
             msg.pose.orientation.w = w
 
         self._pose_publisher.publish(msg)
-
-    def _load_wall_params(self, map_path="lab03.json"):
-        """
-        Loads the wall parameters from the map file.
-
-        Args
-        ----
-         - map_path: Path to the map file.
-
-        """
-        # pkg_dir = os.path.dirname(__file__)
-        # map_path = os.path.join(pkg_dir, "..", "maps", map_path)
-
-        data = json.load(open(map_path))
-        self.data = data
-        self.wall_params = []
-        boundary: list[list[float]] = data["metric"]["boundary"]
-
-        for (x1, y1), (x2, y2) in zip(boundary[:-1], boundary[1:]):
-            dx = x2 - x1
-            dy = y2 - y1
-            length = math.sqrt(dx**2 + dy**2)
-
-            if length < 0.1:
-                continue
-
-            alpha = math.atan2(dy, dx) + math.pi / 2
-            rho = x1 * math.cos(alpha) + y1 * math.sin(alpha)
-            self.wall_params.append([alpha, rho])
-
+        
+        
 
 def main(args=None):
     rclpy.init(args=args)
