@@ -1,0 +1,126 @@
+import math
+
+import rclpy
+
+
+class PurePursuit:
+    """Class to follow a path using a simple pure pursuit controller."""
+
+    def __init__(self, dt: float, lookahead_distance: float = 0.5):
+        """Pure pursuit class initializer.
+
+        Args:
+            dt: Sampling period [s].
+            lookahead_distance: Distance to the next target point [m].
+
+        """
+        self._dt: float = dt
+        self._lookahead_distance: float = lookahead_distance
+        self._path: list[tuple[float, float]] = []
+
+    def compute_commands(self, x: float, y: float, theta: float) -> tuple[float, float]:
+        """Pure pursuit controller implementation.
+
+        Args:
+            x: Estimated robot x coordinate [m].
+            y: Estimated robot y coordinate [m].
+            theta: Estimated robot heading [rad].
+
+        Returns:
+            v: Linear velocity [m/s].
+            w: Angular velocity [rad/s].
+
+        """
+        # TODO: 4.11. Complete the function body with your code (i.e., compute v and w).
+        v = 0.0
+        w = 0.0
+
+        if not self._path:
+            return v, w
+
+        
+        _, closest_idx = self._find_closest_point(x, y)
+        
+        if closest_idx == len(self._path) - 1 and math.dist(self._path[-1], (x, y)) < 0.05:
+            # Robot is close to the last point of the path
+            rclpy.logging.get_logger("pure_pursuit").warn("Reached the end of the path")
+            return 0.0, 0.0
+        
+        target_point = self._find_target_point((x, y), closest_idx)
+
+        beta = math.atan2(target_point[1] - y, target_point[0] - x)
+        alpha = beta - theta
+
+
+        if abs(alpha) > math.pi / 4 and not abs(alpha) > 7 * math.pi / 4:
+            w = math.copysign(1, alpha)
+            return v, w
+
+        v = 0.1
+        w = 2 * v * math.sin(alpha) / self._lookahead_distance
+
+        return v, w
+
+    @property
+    def path(self) -> list[tuple[float, float]]:
+        """Path getter."""
+        return self._path
+
+    @path.setter
+    def path(self, value: list[tuple[float, float]]) -> None:
+        """Path setter."""
+        self._path = value
+
+    def _find_closest_point(
+        self, x: float, y: float
+    ) -> tuple[tuple[float, float], int]:
+        """Find the closest path point to the current robot pose.
+
+        Args:
+            x: Estimated robot x coordinate [m].
+            y: Estimated robot y coordinate [m].
+
+        Returns:
+            tuple[float, float]: (x, y) coordinates of the closest path point [m].
+            int: Index of the path point found.
+
+        """
+        # TODO: 4.9. Complete the function body (i.e., find closest_xy and closest_idx).
+        closest_xy = (0.0, 0.0)
+        closest_idx = 0
+
+        min_distance = float("inf")
+
+        for idx, path_point in enumerate(self._path):
+            distance = math.dist((x, y), path_point)
+            if distance <= min_distance:
+                min_distance = distance
+                closest_xy = path_point
+                closest_idx = idx
+
+        return closest_xy, closest_idx
+
+    def _find_target_point(
+        self, origin_xy: tuple[float, float], origin_idx: int
+    ) -> tuple[float, float]:
+        """Find the destination path point based on the lookahead distance.
+
+        Args:
+            origin_xy: Current location of the robot (x, y) [m].
+            origin_idx: Index of the current path point.
+
+        Returns:
+            tuple[float, float]: (x, y) coordinates of the target point [m].
+
+        """
+        # TODO: 4.10. Complete the function body with your code (i.e., determine target_xy).
+        target_xy = (0.0, 0.0)
+        idx = origin_idx
+        while idx < len(self._path) - 1:
+            distance = math.dist(origin_xy, self._path[idx])
+            if distance >= self._lookahead_distance:
+                break
+            idx += 1
+        target_xy = self._path[idx]
+
+        return target_xy
