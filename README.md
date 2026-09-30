@@ -1,28 +1,28 @@
 # turtlebot3-ros2
 
-ROS 2 workspaces for the TurtleBot3 Burger, written for the course Robots Móviles y Autónomos (Universidad Pontificia Comillas, ETSI ICAI), January to April 2025. The repository has two parts that share the same package layout: a simulation in CoppeliaSim and the version adapted to run on the real robot.
+ROS 2 workspaces for the TurtleBot3 Burger, written for the course Robots Móviles y Autónomos (Universidad Pontificia Comillas, ETSI ICAI), academic year 2024-2025. The repository has two parts that share most of their packages: a simulation in CoppeliaSim and the version adapted to run on the real robot.
 
 Authors: Pablo Tuñón Laguna, Lydia Ruiz Martínez and Jorge Vančo Sampedro.
 
 ## What is implemented
 
-Both workspaces contain the same ROS 2 packages, each node being a lifecycle node started in order by a lifecycle manager.
+Both workspaces contain `amr_bringup`, `amr_control`, `amr_localization`, `amr_msgs` and `amr_planning`. Each node being a lifecycle node started in order by a lifecycle manager.
 
 - `amr_localization`: a particle filter (`particle_filter.py`, with DBSCAN clustering of the particles for global localization) and, in the simulation workspace only, an extended Kalman filter (`ekf.py`) with predict and update steps from laser scans. The filters use the `Map` class (`maps.py`), which loads a JSON map and casts rays against the walls. `maps.hpp` and `maps.cpp` are a C++ version of that map class written with Boost.Geometry and nlohmann/json. They are not part of the colcon build and `maps.cpp` includes `map.hpp`, which does not exist under that name, so the C++ version has not been compiled from this repository.
 - `amr_control`: a wall follower state machine (`wall_follower.py`) and a pure pursuit path tracker (`pure_pursuit.py`).
 - `amr_planning`: path planning with a probabilistic roadmap (`prm.py`), optionally on a grid, with path smoothing.
 - `amr_bringup`: launch files for lab 2 (wall following), lab 3 (particle filter), lab 4 (planning and path tracking) and the final project, plus the lifecycle manager.
-- `amr_msgs`: a pose message with a timestamp.
+- `amr_msgs`: a pose message with a timestamp (`PoseStamped`) and, in `real_robot/`, a `Move` message.
 
 Only in `simulation/`:
 
 - `amr_simulation`: the node that drives CoppeliaSim through its ZMQ remote API and a TurtleBot3 Burger model, with the worlds `lab02`, `lab03` and `project`.
-- `Informe_1` and `Informe_2`: the lab reports (LaTeX source and PDF, in Spanish).
+- `Informe_1` and `Informe_2`: the lab reports (LaTeX source and PDF, in Spanish). The `.tex` files include images from a `fonts/` folder (rqt_graph captures and the ICAI logo) that is not in the repository, so they do not compile here; the PDFs are included.
 
 Only in `real_robot/`:
 
 - `amr_turtlebot3`: an odometry node that republishes `/odom` as `/odometry`, and a monitoring node that prints where the robot localized and whether it reached the goal.
-- `amr_teleoperation`: a keyboard publisher and a teleoperation node, with the `KeyboardMsg` and `Move` messages in `amr_msgs`.
+- `amr_teleoperation`: a keyboard publisher and a teleoperation node. Both import `KeyboardMsg` from `amr_msgs`, but its definition is not in the repository (`amr_msgs/msg/` holds only `Move.msg` and `PoseStamped.msg`), so these two nodes do not build as they stand.
 - `start_robot.sh` and `run.sh`.
 
 ## Structure
@@ -32,6 +32,7 @@ simulation/
   Informe_1.tex, Informe_2.tex (+ PDF)
   src/
     amr_bringup  amr_control  amr_localization  amr_msgs
+    amr_planning  amr_simulation
 real_robot/
   start_robot.sh, run.sh
   src/
