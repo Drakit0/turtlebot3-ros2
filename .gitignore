@@ -1,0 +1,35 @@
+# colcon / ROS 2
+build/
+install/
+log/
+.colcon/
+.ros/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Compiled libraries (build them locally, see README)
+*.so
+
+# Generated plots
+images/
+
+# Editors and OS
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+~$*
+
+# LaTeX build files
+*.aux
+*.fls
+*.fdb_latexmk
+*.log
+*.out
+*.synctex.gz
